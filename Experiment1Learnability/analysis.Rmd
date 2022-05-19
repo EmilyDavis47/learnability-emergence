@@ -429,11 +429,11 @@ rownames(e) <-gsub("conditionCE2", "center-embedded", rownames(e))
 rownames(e) <-gsub("conditionHeadN1", "head-final", rownames(e))
 rownames(e) <-gsub(":", "/", rownames(e))
 library(sjmisc)
-allModels <- list(a)
+allModels <- list(a, b, c, d, e)
 for (i in 1:length(allModels)) {
   allModels[[i]] <- round_num(allModels[[i]], 3)
 allModels[[i]][,ncol(allModels[[i]])][allModels[[i]][,ncol(allModels[[i]])] == 0] <- "< .001"
 }
-titles = c("Comprehension task") #, "Production task", "Seen vs. unseen arrays", "Production task: seen only", "Production task: novel only"
+titles = c("Comprehension task","Production task", "Seen vs. unseen arrays", "Production task: seen only", "Production task: novel only")
 tab_dfs(allModels, titles = titles, show.rownames = TRUE, file = paste0(getwd(), 'tables.html'))
 ```
