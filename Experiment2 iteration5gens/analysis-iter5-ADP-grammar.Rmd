@@ -231,16 +231,16 @@ p<- ggplot( listAllWriteIns[listAllWriteIns$level != 1,], aes(x = gen, y = as.fa
   xlab("generation")+  
   scale_y_discrete(labels = c(rep("", 3), "2 seen", rep("", 5),"2 new", rep("", 5),"3 seen", rep("", 5),"3 new", rep("", 7),"4 new", rep("", 6)))+
   labs(fill = "Syntax Type", shape = "Head Order")+
-  scale_fill_manual(labels = c("Center-embedded", "Center-embedded/Crossed", "Crossed", "Branching", "Uninterpretable", ""),  values = c( hue_pal()(5), NA)) +
+  scale_fill_manual(labels = c("Center-embedded", "Center-embedded/Crossed", "Crossed", "Branching", "Uninterpretable", ""),  values = c( hue_pal()(5), NA ) ) +
   geom_point(aes(shape = featureHead1, color = featureHead1), size = 1)+
   scale_shape_manual(labels = c("Final", "Indeterminate", "Initial", ""),  values =c(4, NA, 1, NA)) +
-  scale_color_manual(labels = c("Final", "Indeterminate", "Initial", ""),  values =c("black", NA,"black",  NA), guide = FALSE)+
+  scale_color_manual(labels = c("Final", "Indeterminate", "Initial", ""),  values =c("black", NA,"black",  NA), guide =  "none")+
     geom_hline(yintercept=8.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen: 2 seen
     geom_hline(yintercept=12.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 2 new
   geom_hline(yintercept=20.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 3 seen
   geom_hline(yintercept=24.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 3 new/4 new
   theme_bw()+
-  guides(fill = guide_legend(override.aes = list(shape = NA)))+
+ guides(fill = guide_legend(override.aes = list(shape = NA)))+
   theme(axis.ticks.y = element_blank(),
         axis.title.y = element_blank())
 print(p)
