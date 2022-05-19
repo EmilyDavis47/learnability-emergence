@@ -112,7 +112,7 @@ import csv
 import numpy as np
 import os, fnmatch
 
-df = pd.read_csv('/Users/emilydavis/Desktop/paper data/Experiment1Learnability/allDataWriteMergedLrn3Full.csv')
+df = pd.read_csv('/Users/emilydavis/Desktop/paper data/Experiment1Learnability/allDataWriteMerged.csv')
 def makeGrammar(df): 
   df= df.sort_values(by=['workerId'])
   users = sorted(list(set(list(df['workerId']))))
