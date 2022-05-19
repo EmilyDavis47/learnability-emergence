@@ -1,0 +1,357 @@
+---
+title:  "Pilot Experiment 2: Iterated Learning: Grammars"
+output: html_document
+fig_crop: no
+---
+
+```{r setup, include=FALSE,  message=FALSE, warning=FALSE}
+options(warn=-1)
+
+library (tidyverse)
+library(lubridate)
+library(stringdist)
+library(lme4)
+library(lmerTest)
+```
+
+## Import grammar file
+  "grammars" contains interpretations of every array in every grammar. 
+```{r}
+
+setwd('/Users/emilydavis/Desktop/paper data/pilotExperIter')
+allGrammars  <- read.csv(paste0(getwd(), '/allDataWriteGrammarPilotIter1.csv'))
+allDataWriteMerged <- read.csv(paste0(getwd(), '/allDataWritePilotIter1.csv'))
+timeList <- read.csv(paste0(getwd(), '/timeListPilotIter1.csv') )
+allGrammars <- arrange(allGrammars, workerId, chain, generation, level, arrayTraining)
+allDataWriteMerged <- arrange(allDataWriteMerged, workerId, chain, generation, level, arrayTraining)
+#make sure they're in the same order so comparisions work
+grammarcols <- c()
+for (c in colnames(allGrammars)) {
+  if (grepl("Grammar", c) == TRUE)
+    grammarcols <- c(grammarcols, c)
+}
+grammars <- dplyr::select(allGrammars, all_of(grammarcols))
+```
+
+## Best fit grammars for each string 
+
+```{r}
+closestGram <- list()
+for (n in 1:nrow(allGrammars)) {
+  comparisons <- c()
+  for (k in 1:ncol(grammars)) {
+    input <- as.character(allGrammars$encodingCorrected[n])
+    comp <- as.character(grammars[n,k])
+    ds <- stringdist(input, comp, method = "osa")/max(nchar(input), nchar(comp))
+    comparisons <- c(comparisons, ds)
+   closest <- which(comparisons == min(comparisons))
+  closestGram[[n]] <- grammarcols[closest]
+    }
+  }
+
+
+clGram <- c()
+for (n in 1:length(closestGram)) {
+  cl <- paste(closestGram[[n]], collapse = ' ')
+  clGram <- c(clGram, cl)
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, clGram)
+```
+
+## Retrieving adposition glosses
+ 
+```{r}
+prepMGloss <-c()
+prepRGloss <- c()
+gen0s = unique(allDataWriteMerged$workerId[allDataWriteMerged$generation == 0])
+for (w in c(as.character(timeList$workerId), gen0s)) {
+  if (!w %in% timeList$workerId) {
+  prepMGloss <- c(prepMGloss, rep("null", each = 40))
+  prepRGloss <- c(prepRGloss, rep("null", each = 40))
+  }
+  else {
+  prepMGloss <- c(prepMGloss, rep(as.character(timeList$PH[timeList$workerId == w]), each = nrow(allDataWriteMerged[allDataWriteMerged$workerId == w,])))
+  prepRGloss <- c(prepRGloss, rep(as.character(timeList$PV[timeList$workerId== w]), each = nrow(allDataWriteMerged[allDataWriteMerged$workerId == w,])))
+  }
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, prepMGloss, prepRGloss)
+```
+
+
+## Narrowing down grammars by adposition gloss
+
+Next: filter out grammars that don't fit with the user's self-reported preposition meanings. If the preposition meanings given are ambiguous or uninterpretable, no grammars will be discarded as all are possibly valid. 
+
+If stated V meaning is "atop": eliminate "under" entries
+If stated V meaning is "under": eliminate "atop" entries
+If stated H meaning is "right": eliminate "left" entries; etc
+
+```{r}
+clGramsFiltered <- c()
+possibleGrammars <- c()
+for (n in 1:nrow(allDataWriteMerged)) {
+  grams <- strsplit(as.character(allDataWriteMerged$clGram[n]), " ")[[1]]
+  gramsRemove <- c()
+  #remove wrong orientation
+ if (allDataWriteMerged$prepMGloss[n] %in% c("horiz", "left", "right")) {
+    for (gram in grams) {
+      if (grepl("m.Atop|m.Vert|m.Under", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    if (allDataWriteMerged$prepMGloss[n] == "right") {
+    for (gram in grams) {
+      if (grepl("m.Left", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+    }
+        #remove contradicting answers 
+else if (allDataWriteMerged$prepMGloss[n] == "left") {
+    for (gram in grams) {
+      if (grepl("m.Right", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+      
+}
+ }
+else if (allDataWriteMerged$prepMGloss[n] %in% c("atop", "vert", "under")) {
+    for (gram in grams) {
+      if (grepl("m.Left|m.Right|m.Horiz", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+    if (allDataWriteMerged$prepMGloss[n] == "under") {
+    for (gram in grams) {
+      if (grepl("m.Atop", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+else if (allDataWriteMerged$prepMGloss[n] == "atop") {
+    for (gram in grams) {
+      if (grepl("m.Under", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+  }
+  
+if (allDataWriteMerged$prepRGloss[n] %in% c("horiz", "left", "right")) {
+    for (gram in grams) {
+      if (grepl("r.Atop|r.Vert|r.Under", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+ #remove contradicting answers 
+if (allDataWriteMerged$prepRGloss[n] == "right") {
+    for (gram in grams) {
+      if (grepl("r.Left", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+else if (allDataWriteMerged$prepRGloss[n] == "left") {
+    for (gram in grams) {
+      if (grepl("r.Right", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+  
+ }
+else if (allDataWriteMerged$prepRGloss[n] %in% c("atop", "vert", "under")) {
+    for (gram in grams) {
+      if (grepl("r.Left|r.Right|r.Horiz", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+    if (allDataWriteMerged$prepRGloss[n] == "under") {
+    for (gram in grams) {
+      if (grepl("r.Atop", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+else if (allDataWriteMerged$prepRGloss[n] == "atop") {
+    for (gram in grams) {
+      if (grepl("r.Under", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+  }
+  
+
+#do the same for other adposition   
+  #remove wrong orientation
+
+   if (length(grams) > length(gramsRemove)) { #if all possible grammars are ruled out, just keep them
+  gramsFiltered = grams[!grams %in% gramsRemove]
+   } else {
+     gramsFiltered = grams
+   }
+  gm <- paste(gramsFiltered, collapse = " ")
+  clGramsFiltered <- c(clGramsFiltered, gm)
+  possibleGrammars <- c(possibleGrammars, length(gramsFiltered))
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, clGramsFiltered, possibleGrammars)
+```
+
+## Features
+
+Deconstructing grammars into features 
+
+```{r}
+featureType1 <- c() #CE, noCE, crossed
+for (i in 1:nrow(allDataWriteMerged)) {
+  gs<- strsplit(as.character(allDataWriteMerged$clGramsFiltered[i]), " ")[[1]]
+  headNs <- c()
+  types <- c()
+   for (g in gs) {
+  types <- c(types, str_extract(g, "CE|noCE|Crossed"))
+  types <- unique(types)
+    if (length(types) >= 2) {
+      if (length(types) == 2 && "CE" %in% types && "Crossed" %in% types) {
+        t <- paste0(types, collapse = " or ")
+      } else {
+    t <- "X"
+    }
+    } else {
+    t <- paste0(types, collapse = " ")
+    }
+}
+  featureType1 <- c(featureType1, t)
+}
+featureHead1 <- c() 
+for (i in 1:nrow(allDataWriteMerged)) {
+  gs<- strsplit(as.character(allDataWriteMerged$clGramsFiltered[i]), " ")[[1]]
+  heads <- c()
+   for (g in gs) {
+ heads <- c(heads, str_extract(g, "Initial|Final"))
+  heads <- unique(heads)
+    if (length(heads) >= 2) {
+ 	t <-"indeterminate"
+    } else {
+    t <- paste0(heads, collapse = " ")
+    }
+}
+  featureHead1 <- c(featureHead1, t)
+}
+
+allDataWriteMerged <- cbind(allDataWriteMerged, featureType1, featureHead1)
+```
+
+# Preparing data for graphing by string
+
+Arrange by level and array. 
+
+```{r}
+allDataWriteMerged$generation <- as.factor(allDataWriteMerged$generation)
+allDataWriteMerged$seenInTraining <- as.factor(allDataWriteMerged$seenInTraining )
+allDataWriteMerged$seenInTraining <- relevel(allDataWriteMerged$seenInTraining, "true")
+allDataWriteMerged <- arrange(allDataWriteMerged, workerId, level, seenInTraining, arrayTraining)
+item <- c()
+for (w in unique(allDataWriteMerged$workerId)) {
+  item2 <- c()
+  for (k in 1:nrow(allDataWriteMerged[allDataWriteMerged$workerId == w,])) {
+    item2 <- c(item2, k)
+  }
+  item <- c(item, item2)
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, item)
+
+```
+
+Preparing for graph
+```{r  message=FALSE, warning=FALSE}
+library(scales)
+allDataWriteMerged$chain <- as.character(allDataWriteMerged$chain)
+allDataWriteMerged$featureType1 <- as.character(allDataWriteMerged$featureType1)
+allDataWriteMerged$featureHead1 <-as.character(allDataWriteMerged$featureHead1)
+allDataWriteMerged$featureType1[allDataWriteMerged$gen== 0 & allDataWriteMerged$seen == "false"] <- " "
+allDataWriteMerged$featureHead1[allDataWriteMerged$gen== 0 & allDataWriteMerged$seen == "false"] <- " "
+allDataWriteMerged$featureType1 <- as.factor(allDataWriteMerged$featureType1)
+
+#shuffle levels into proper order so blank is last 
+allDataWriteMerged$featureType1 <- relevel(allDataWriteMerged$featureType1, "X")
+allDataWriteMerged$featureType1 <- relevel(allDataWriteMerged$featureType1, "noCE")
+allDataWriteMerged$featureType1 <- relevel(allDataWriteMerged$featureType1, "Crossed")
+allDataWriteMerged$featureType1 <- relevel(allDataWriteMerged$featureType1, "CE or Crossed")
+allDataWriteMerged$featureType1 <- relevel(allDataWriteMerged$featureType1, "CE")
+
+allDataWriteMerged$featureHead1 <- as.factor(allDataWriteMerged$featureHead1)
+allDataWriteMerged$featureHead1 <- relevel(allDataWriteMerged$featureHead1, "Initial")
+allDataWriteMerged$featureHead1 <- relevel(allDataWriteMerged$featureHead1, "indeterminate")
+allDataWriteMerged$featureHead1 <- relevel(allDataWriteMerged$featureHead1, "Final")
+```
+
+```{r}
+
+allDataWriteMerged$level <- as.factor(as.numeric(allDataWriteMerged$level)+1)
+p<-ggplot( allDataWriteMerged[allDataWriteMerged$level != 1,], aes(x = generation, y = as.factor(item), fill = featureType1)) +
+  facet_wrap(~chain, ncol = 5)+
+  geom_bin2d()+
+  xlab("generation")+
+  scale_y_discrete(labels = c(rep("", 3), "2 seen", rep("", 5),"2 new", rep("", 5),"3 seen", rep("", 5),"3 new", rep("", 7),"4 new", rep("", 6)))+
+  labs(fill = "Syntax Type", shape = "Head Order")+
+  scale_fill_manual(labels = c("Center-embedded", "Center-embedded/Crossed", "Crossed", "Branching", "Uninterpretable", ""),  values = c( hue_pal()(5), NA)) +
+  geom_point(aes(shape = featureHead1, color = featureHead1), size = 1, position = position_nudge(y = 0.0))+
+  scale_shape_manual(labels = c("Final", "Indeterminate", "Initial", ""),  values =c(4, 1, NA, NA)) +
+  scale_color_manual(labels = c("Final", "Indeterminate", "Initial", ""),  values =c("black", "black", NA, NA), guide = FALSE)+
+    geom_hline(yintercept=8.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen: 2 seen
+    geom_hline(yintercept=12.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 2 new
+  geom_hline(yintercept=20.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 3 seen
+  geom_hline(yintercept=24.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 3 new/4 new
+  theme_bw()+
+  guides(fill = guide_legend(override.aes = list(shape = NA)))+
+  theme(axis.ticks.y = element_blank(),
+        axis.title.y = element_blank())
+  ggsave(paste0(getwd(), '/syntax_strings.png'),p,width=10, height=11)
+ #ggsave 
+```
+
+```{r}
+entropy = function(s)
+{freq = prop.table(s)+ 1e-23 #to avoid divide by zero
+-sum(freq * log(freq, base = 2))}
+
+grammarListsGen <- allDataWriteMerged[allDataWriteMerged$level !=0,] %>% group_by(chain, generation, workerId) %>% summarize(grammarList = paste(clGramsFiltered, collapse = " "), featureList = paste(featureType1, collapse = " "))
+entropyG <- c()
+for (i in 1:nrow(grammarListsGen)) {
+  gList <- grammarListsGen$grammarList[i]
+  gNums <- c()
+  for (g in grammarcols) {
+    gNums <- c(gNums,str_count(gList, g))
+  }
+  entropyG <- c(entropyG, entropy(gNums))
+}
+grammarListsGen <- cbind(grammarListsGen, entropy = entropyG)
+sum<- summary(lmer(entropy ~ as.numeric(generation) + (1|chain), data = grammarListsGen))
+
+ggplot(grammarListsGen, aes(x = generation, y = entropy, group = chain, color = chain, alpha = .5)) +
+  geom_line()+
+  stat_summary(aes(colour="mean",group=1), fun= "mean", geom="line", color = "black", alpha = 1)+
+  guides(alpha = FALSE)+
+  xlab("generation")+
+  theme_bw()+
+  theme(legend.position = "none")
+
+```
+
+Output models to HTML
+```{r  message=FALSE, warning=FALSE}
+library(sjPlot)
+
+entrop<- as.data.frame(coefficients(sum))
+rownames(entrop) <-gsub("Intercept", "Generation 0", rownames(entrop))
+rownames(entrop) <-gsub("as.numeric\\(generation\\)", "Generation", rownames(entrop))
+library(sjmisc)
+allModels <- list(entrop)
+for (i in 1:length(allModels)) {
+  allModels[[i]] <- round_num(allModels[[i]], 3)
+allModels[[i]][,ncol(allModels[[i]])][allModels[[i]][,ncol(allModels[[i]])] == 0] <- "< .001"
+}
+tab_dfs(allModels, titles = c("Entropy"), file = paste0(getwd(), 'table-gram.html'))
+```

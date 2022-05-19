@@ -1,0 +1,310 @@
+---
+title: "Pilot Experiment 2: Iterated Learning"
+output: html_document
+fig_crop: no
+---
+
+```{r setup, include=FALSE,  message=FALSE, warning=FALSE}
+options(warn=-1)
+library(MASS)
+library (tidyverse)
+library(lubridate)
+library(stringdist)
+library(lme4)
+library(lmerTest)
+```
+
+## Needed functions
+Create dataframes for compehension tests and write-in data. 
+
+```{r results='hide', message=FALSE, warning=FALSE}
+
+analyze<- function(datas) {
+  dataTesting <-list()
+  scores <- c()
+  for (i in 1:length(datas)) {
+    dataTesting[[i]] <- datas[[i]][datas[[i]]$trialType == "testing",]
+    dataTesting[[i]]$participantChoiceNumber[is.na(dataTesting[[i]]$participantChoiceNumber)] <- "X"
+    dataTesting[[i]]$correct = dataTesting[[i]]$correctChoiceNumber == dataTesting[[i]]$participantChoiceNumber
+  }
+  return(dataTesting)
+}
+
+analyzeMeanTesting <- function(dataTesting) {
+  dataTestingLevel <- list()
+  for (i in 1:length(dataTesting)) {
+    dataTestingLevel[[i]] <- dataTesting[[i]] %>%
+      group_by(level)  %>% 
+      summarize(level_score = sum(correct)/length(correct))
+    dataTestingLevel[[i]]$chain <- rep(dataTesting[[i]]$chain[1], nrow(dataTestingLevel[[i]]))
+    dataTestingLevel[[i]]$generation <- rep(dataTesting[[i]]$generation[1], nrow(dataTestingLevel[[i]]))
+    dataTestingLevel[[i]]$user <- rep(dataTesting[[i]]$workerId[1], nrow(dataTestingLevel[[i]]))
+  }
+  dataTestingLevelAllUsers <- rbind()
+  for (dat in dataTestingLevel) {
+    dataTestingLevelAllUsers <- rbind(dataTestingLevelAllUsers, dat)
+  }
+  return(dataTestingLevelAllUsers)
+}
+
+analyzeWriting <- function(datas) {
+  #compositional answers analysis
+  data_write <- list()
+  data_write_level <- list()
+  for (i in 1:length(datas)) {
+    dataWriteNew <- datas[[i]][datas[[i]]$trialType == "write",]
+    dataWriteNew$participantText[is.na(dataWriteNew$participantText)] <- ""
+      #print(dataWriteNew$participantText)
+      
+      data_write[[length(data_write) +1]] <- dataWriteNew
+  }
+  
+  return (data_write)
+}
+
+
+```
+
+## Processing the data
+Import task data and demographic files, which have been anonymized. 
+
+```{r results='hide', message=FALSE, warning=FALSE}
+
+setwd("/Users/emilydavis/Desktop/paper data/pilotExperIter")
+dataAnon <- read.csv(paste0(getwd(), '/allDataAnonPilotIter1.csv'))
+dataFiles <- split(dataAnon, dataAnon$workerId)
+
+allDataTesting <- analyze(dataFiles)
+allDataTestingMerged <- rbind()
+for (dat in allDataTesting) {
+  allDataTestingMerged <- rbind(allDataTestingMerged, dat)
+}
+allDataTestingLevel <- analyzeMeanTesting(allDataTesting)
+allDataTestingMean <- allDataTestingLevel %>% group_by(chain, generation, level) %>% summarize(level_score = mean(level_score))
+
+allDataWrite <- analyzeWriting(dataFiles)
+
+```
+
+
+## Comprehension
+
+Graph and analysis
+
+```{r results='hide', message=FALSE, warning=FALSE}
+allDataTestingLevel$level <- as.factor(allDataTestingLevel$level )
+levels(allDataTestingLevel$level) <- c("1 item", "2 items", "3 items")
+ggplot(allDataTestingLevel, aes(x= generation, y= level_score, color = chain, alpha = .5)) +
+  geom_line()+
+  facet_wrap(~level, ncol=1)+
+  scale_x_discrete(name ="generation", 
+                    limits=1:10)+
+  stat_summary(aes(colour="mean",group=1), fun.y= "mean", geom="line", color = "black", alpha = 1)+
+   guides(alpha = FALSE)+
+  ylab("Proportion correct")+
+  theme_bw()+
+  theme(legend.position = "none")
+
+```
+
+
+
+```{r}
+
+allDataTestingMerged$level <- as.factor(allDataTestingMerged$level)
+contrasts(allDataTestingMerged$level) <- contr.sdif(3)
+testLmerInteract <- glmer(correct ~ level* generation +(1 + level | chain:workerId) + (1 + generation | chain), data = allDataTestingMerged, family = "binomial")
+```
+
+
+
+## Production accuracy
+
+Combine all writing trials, and get initials. 
+```{r warning = FALSE, message= FALSE}
+allDataWriteNew <- list()
+for (d in allDataWrite) {
+encodingCorrected <- c()
+for (i in 1:nrow(d)) {
+  splitC <- strsplit(as.character(d$participantText[i]), " ")[[1]]
+  initialsC <- c()
+  for (word in splitC) {
+    initialsC <- c(initialsC, substring(word, 1, 1))
+  }
+  initC <- paste(initialsC, collapse = "")
+  encodingCorrected <- c(encodingCorrected, initC)
+}
+encodingCompositional <- c()
+for (i in 1:nrow(d)) {
+  splitC <- strsplit(as.character(d$compositionalAnswer[i]), " ")[[1]]
+  initialsC <- c()
+  for (word in splitC) {
+    initialsC <- c(initialsC, substring(word, 1, 1))
+  }
+  initC <- paste(initialsC, collapse = "")
+  encodingCompositional<- c(encodingCompositional, initC)
+}
+d <-cbind(d, encodingCorrected, encodingCompositional)
+correctness <- c()
+for (i in 1:nrow(d)) {
+  longer = max( 
+nchar(as.character(d$encodingCompositional[i])), nchar(as.character(d$encodingCorrected[i])) )
+  normedC <- 1- (stringdist(as.character(d$encodingCompositional[i]),
+                            as.character(d$encodingCorrected[i]),
+                                      method = "osa")/longer)
+  correctness <-c(correctness, normedC) 
+}
+d <- cbind(d, correctness)
+allDataWriteNew[[length(allDataWriteNew)+1]] <- d
+}
+
+analyzeWritingMeans<- function (data_write) {
+  data_write_level <- list()
+  for (j in 1:length(data_write)) {
+    data_write_level[[j]] <- data_write[[j]][data_write[[j]]$seenInTraining== "true",] %>% group_by(workerId, level, chain, generation, seenInTraining) %>% summarize(meanC = mean(correctness))
+    data_write_level[[j]]$generation <- rep(data_write[[j]]$generation[1], 3)
+    data_write_level[[j]]$chain <- rep(data_write[[j]]$chain[1], 3)
+    data_write_level[[j]]$user<- rep(data_write[[j]]$workerId[1], 3)
+  }
+  
+  data_write_levelAll <- rbind()
+  for (d in data_write_level) {
+    data_write_levelAll <- rbind(data_write_levelAll, d)
+  }
+  return (data_write_levelAll)
+}
+
+analyzeWritingMeansNovel<- function (data_write) {
+  data_write_level <- list()
+  for (j in 1:length(data_write)) {
+    data_write_level[[j]] <- data_write[[j]][data_write[[j]]$seenInTraining== "false",] %>% group_by(workerId, level, chain, generation, seenInTraining) %>% summarize(meanC = mean(correctness))
+    data_write_level[[j]]$generation <- rep(data_write[[j]]$generation[1], 3)
+    data_write_level[[j]]$chain <- rep(data_write[[j]]$chain[1], 3)
+    data_write_level[[j]]$user<- rep(data_write[[j]]$workerId[1], 3)
+  }
+  
+  data_write_levelAll <- rbind()
+  for (d in data_write_level) {
+    data_write_levelAll <- rbind(data_write_levelAll, d)
+  }
+  return (data_write_levelAll)
+}
+
+allDataWriteMeans<- analyzeWritingMeans(allDataWriteNew)
+allDataWriteMeansUnseen<- analyzeWritingMeansNovel(allDataWriteNew)
+levels(allDataWriteMeans$level) <- c("1 item", "2 items", "3 items", "4 items")
+levels(allDataWriteMeansUnseen$level) <- c("1 item", "2 items", "3 items", "4 items")
+```
+
+```{r}
+allDataWriteMeans2 <- rbind(allDataWriteMeans, allDataWriteMeansUnseen)
+allDataWriteMeans2$seenInTraining <- as.character(allDataWriteMeans2$seenInTraining)
+allDataWriteMeans2$level <- allDataWriteMeans2$level +1
+allDataWriteMeans2$seenInTraining[allDataWriteMeans2$seenInTraining == "true"] <- "seen"
+allDataWriteMeans2$seenInTraining[allDataWriteMeans2$seenInTraining == "false"] <- "unseen"
+ggplot(allDataWriteMeans2, aes(x= generation, y= meanC, color = chain, alpha = .5)) +
+  geom_line()+
+  stat_summary(aes(colour="mean",group=1), fun= "mean", geom="line", color = "black", alpha = 1)+
+   guides(alpha = FALSE)+
+    facet_grid(rows = vars(level), cols = vars(seenInTraining))+
+  scale_x_discrete(name ="generation", 
+                    limits=factor(1:10))+
+   guides(alpha = FALSE)+
+  ggtitle("")+ 
+  ylab("Correctness")+
+  theme_bw()+
+  theme(legend.position = "none")
+```
+```{r  message=FALSE, warning=FALSE}
+library(MASS)
+allDataWriteMeans$level <- factor(allDataWriteMeans$level)
+allDataWriteMeansUnseen$level <- factor(allDataWriteMeansUnseen$level)
+contrasts(allDataWriteMeans$level) <- contr.sdif(3)
+contrasts(allDataWriteMeansUnseen$level) <- contr.sdif(3)
+modelConsistencySeen <- lmer(meanC ~ level* generation + (1+generation * level | chain), data = allDataWriteMeans)
+modelConsistencyUnseen <- lmer(meanC ~  level* generation + (1+generation * level | chain), data = allDataWriteMeansUnseen)
+```
+
+## Analysis of writing: matching possible grammars 
+Merge relevant columns of writing files into one big file
+
+```{r}
+allDataWriteMerged <-rbind()
+
+chain <- c()
+consonants <- c()
+for (k in allDataWriteNew) {
+   if (k$generation[1] == 1) {#make generation 0 tables
+  consonants <- c(consonants, paste0(k$encodingCompositional[1:4], collapse = ''))
+  chain<- c(chain, as.character(k$chain[1]))
+   }
+}
+consonantsChain <- data.frame(chain = as.character(chain), consonants)
+#needs to also include generation 0 
+for (k in allDataWriteNew) {
+  #take initials of first four participant entries; these are their noun names
+  p = strsplit(as.character(k$participantText[k$arrayTraining == "0"]), '')[[1]][1]
+  for (j in 1:3) {
+    p = paste0(p, strsplit(as.character(k$participantText[k$arrayTraining == as.character(j)]), '')[[1]][1])
+  }
+  #add to the data frame
+  nounsUser <- rep(p, nrow(k))
+  k <- cbind(k, nounsUser)
+  #"canonical" nouns of chain, at gen0
+  consonantsChain2 <- as.character(consonantsChain$consonants[consonantsChain$chain == k$chain[1]])
+  k <- cbind(k, lexiconChain = rep(consonantsChain2, nrow(k)))
+  k2 <- k[, c("workerId", "chain", "generation", "level", "arrayTraining", "encodingCorrected", "nounsUser", "lexiconChain", "seenInTraining")]
+  #merge everything together
+  allDataWriteMerged <-rbind(allDataWriteMerged, k2)
+  if (k$generation[1] == 1) {#make generation 0 tables
+    name = paste0(as.character(k$chain[1]), "_0")
+    k3 <- data.frame(workerId = rep(name, nrow(k)), generation = rep(0, nrow(k)), chain = k$chain, level = k$level, arrayTraining = k$arrayTraining,
+                     encodingCorrected = k$encodingCompositional, #captions seen by user at gen 1
+                     nounsUser = k$lexiconChain,
+                     lexiconChain = k$lexiconChain,
+                     seenInTraining = k$seenInTraining)
+    allDataWriteMerged <- rbind(allDataWriteMerged, k3)
+  }
+}
+#each user's names for the items, plus their prepositions
+lexiconUser <- c()
+for (n in 1:nrow(allDataWriteMerged)) {
+lexiconUser <- c(lexiconUser, paste0(allDataWriteMerged$lexiconChain[n], "mr"))
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, lexiconUser)
+prepsUser <- c()
+for (n in 1:nrow(allDataWriteMerged)) {
+  prepsUser <- c(prepsUser, paste0(str_extract_all(lexiconUser, paste0('[^',allDataWriteMerged$nounsUser[n], ']'))[[1]], collapse = ''))
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, prepsUser)
+allDataWriteMerged <- dplyr::select(allDataWriteMerged, workerId, chain, generation, level, arrayTraining, encodingCorrected, nounsUser, prepsUser, seenInTraining)
+allDataWriteMerged <- arrange(allDataWriteMerged, workerId)
+write.csv(allDataWriteMerged, paste0(getwd(),'/allDataWritePilotIter1.csv'))
+```
+
+Then run the python code with appropriate input and output files. Note: use the "iter1" version of the file, as the code is different here to account for users' nouns and prepositions deviating from the original (i.e. adpositions reinterpreted as object names). 
+
+Output models to HTML
+```{r  message=FALSE, warning=FALSE}
+library(sjPlot)
+a<- as.data.frame(coefficients(summary(testLmerInteract)))
+rownames(a) <-gsub("Intercept", "level 1/generation 1", rownames(a))
+rownames(a) <-gsub(":", "/", rownames(a))
+
+b<- as.data.frame(coefficients(summary(modelConsistencySeen)))
+rownames(b) <-gsub("Intercept", "level 1/generation 0", rownames(b))
+rownames(b) <-gsub(":", "/", rownames(b))
+
+c<- as.data.frame(coefficients(summary(modelConsistencyUnseen)))
+rownames(c) <-gsub("Intercept", "level 2/generation 1", rownames(c))
+rownames(c) <-gsub("3-2", "4-3", rownames(c))
+rownames(c) <-gsub("2-1", "3-2", rownames(c))
+rownames(c) <-gsub(":", "/", rownames(c))
+library(sjmisc)
+allModels <- list(a, b,c)
+for (i in 1:length(allModels)) {
+  allModels[[i]] <- round_num(allModels[[i]], 3)
+allModels[[i]][,ncol(allModels[[i]])][allModels[[i]][,ncol(allModels[[i]])] == 0] <- "< .001"
+}
+tab_dfs(allModels, titles = c("Comprehension task", "Consistency of captions: arrays seen in training", "Consistency of captions: novel arrays"), file = paste0(getwd(),  '/tables.html'))
+```
