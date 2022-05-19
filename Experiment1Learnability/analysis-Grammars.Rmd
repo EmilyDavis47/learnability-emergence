@@ -1,0 +1,280 @@
+---
+title: 'Experiment 1: Learnability (3 syntax conditions, adposition training): Grammars'
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Import grammar file
+
+Grammar file is imported. "grammars" contains interpretations of every array in every grammar. 
+```{r  message=FALSE, warning=FALSE}
+library(stringdist)
+library (tidyverse)
+library(lmerTest)
+setwd("/Users/emilydavis/Desktop/paper data/Experiment1Learnability")
+allDataWriteMerged2 <-read.csv(paste0(getwd(), '/allDataWriteMergedGrammars.csv'))
+```
+
+Manually cleaning up some entries where write-in answers are synonymous with "left" or "Horizontal." 
+```{r}
+allDataWriteMerged2$prepMGloss <- as.character(allDataWriteMerged2$prepMGloss)
+  allDataWriteMerged2$prepMGloss[allDataWriteMerged2$workerId == "A108"] <- "horiz"
+  allDataWriteMerged2$prepMGloss[allDataWriteMerged2$workerId == "A99"] <- "horiz"
+  
+  allDataWriteMerged2$prepMGloss[allDataWriteMerged2$workerId == "A7"] <- "none"
+  allDataWriteMerged2$prepMGloss[allDataWriteMerged2$workerId == "A25"] <- "left"
+  
+```
+
+ "grammars" contains interpretations of every array in every grammar. 
+```{r}
+grammarcols <- c()
+for (c in colnames(allDataWriteMerged2)) {
+  if (grepl("Grammar", c) == TRUE)
+    grammarcols <- c(grammarcols, c)
+}
+grammars <- allDataWriteMerged2[, grammarcols]
+```
+
+## Find the best-fit grammar(s) for each string
+comparing the string to each of the corresponding strings from possible grammars. If there's no sufficiently close grammar, the string is declared uninterpretable. 
+```{r}
+closestGram <- list()
+for (n in 1:nrow(allDataWriteMerged2)) {
+  comparisons <- c()
+  for (k in 1:ncol(grammars)) {
+    input <- as.character(allDataWriteMerged2$encodingCorrected[n])
+    comp <- as.character(grammars[n,k])
+    ds <- stringdist(input, comp, method = "osa")/max(nchar(input), nchar(comp))
+    comparisons <- c(comparisons, ds)
+    if (min(comparisons) > .75) {
+      closestGram[[n]] <- "X"
+    } else {
+   closest <- which(comparisons == min(comparisons))
+  closestGram[[n]] <- grammarcols[closest]
+    }
+    }
+  }
+
+clGram <- c()
+for (n in 1:length(closestGram)) {
+  cl <- paste(closestGram[[n]], collapse = ' ')
+  clGram <- c(clGram, cl)
+}
+allDataWriteMerged2 <- cbind(allDataWriteMerged2, clGram)
+```
+
+Next: filter out grammars that don't fit with the user's self-reported adposition meanings. If meanings given are ambiguous or uninterpretable, no grammars will be discarded as all are possibly valid. 
+
+```{r}
+clGramsFiltered <- c()
+possibleGrammars <- c()
+for (n in 1:nrow(allDataWriteMerged2)) {
+  grams <- strsplit(as.character(allDataWriteMerged2$clGram[n]), " ")[[1]]
+  gramsRemove <- c()
+  #remove wrong orientation
+if (allDataWriteMerged2$prepRGloss[n] %in% c("horiz", "left", "right")) {
+    for (gram in grams) {
+      if (grepl("r.Atop|r.Vert|r.Under", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+ #remove contradicting answers 
+if (allDataWriteMerged2$prepRGloss[n] == "right") {
+    for (gram in grams) {
+      if (grepl("r.Left", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+else if (allDataWriteMerged2$prepRGloss[n] == "left") {
+    for (gram in grams) {
+      if (grepl("r.Right", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+  
+ }
+else if (allDataWriteMerged2$prepRGloss[n] %in% c("atop", "vert", "under")) {
+    for (gram in grams) {
+      if (grepl("r.Left|r.Right|r.Horiz", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+    if (allDataWriteMerged2$prepRGloss[n] == "under") {
+    for (gram in grams) {
+      if (grepl("r.Atop", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+else if (allDataWriteMerged2$prepRGloss[n] == "atop") {
+    for (gram in grams) {
+      if (grepl("r.Under", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+}
+  else {#vertical not specified
+    if (allDataWriteMerged2$prepMGloss[n] == "left") {
+  for (gram in grams) {
+      if (grepl("m.Right", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+  }
+} else if (allDataWriteMerged2$prepMGloss[n] == "right") {
+  for (gram in grams) {
+      if (grepl("m.Left", gram) == TRUE) {
+        gramsRemove <- c(gramsRemove, gram)
+      }
+    }
+  }
+  }
+  }
+  
+
+#do the same for other adposition   
+  #remove wrong orientation
+
+
+   if (length(grams) > length(gramsRemove)) { #if all possible grammars are ruled out, just keep them
+  gramsFiltered = grams[!grams %in% gramsRemove]
+   } else {
+     gramsFiltered = grams
+   }
+  gm <- paste(gramsFiltered, collapse = " ")
+  clGramsFiltered <- c(clGramsFiltered, gm)
+  possibleGrammars <- c(possibleGrammars, length(gramsFiltered))
+}
+allDataWriteMerged2 <- cbind(allDataWriteMerged2, clGramsFiltered, possibleGrammars)
+```
+
+## Features
+
+Deconstruct the grammars into features. 
+
+```{r}
+featureType1 <- c() #CE, noCE, crossed
+for (i in 1:nrow(allDataWriteMerged2)) {
+  gs<- strsplit(as.character(allDataWriteMerged2$clGramsFiltered[i]), " ")[[1]]
+  types <- c()
+   for (g in gs) {
+  types <- c(types, str_extract(g, "CE|noCE|Crossed|X"))
+  types <- unique(types)
+    if (length(types) >= 2) {
+      if (length(types) == 2 && "CE" %in% types && "Crossed" %in% types) {
+        t <- paste0(types, collapse = " or ")
+      } else {
+    t <- "X"
+    }
+    } else {
+    t <- paste0(types, collapse = " ")
+    }
+}
+  featureType1 <- c(featureType1, t)
+}
+
+featureHead1 <- c() 
+for (i in 1:nrow(allDataWriteMerged2)) {
+  gs<- strsplit(as.character(allDataWriteMerged2$clGramsFiltered[i]), " ")[[1]]
+  heads <- c()
+   for (g in gs) {
+ heads <- c(heads, str_extract(g, "Initial|Final|X"))
+  heads <- unique(heads)
+    if (length(heads) >= 2 || "X" %in% heads) {
+ 	t <-"indeterminate"
+    } else {
+    t <- paste0(heads, collapse = " ")
+    }
+}
+  featureHead1 <- c(featureHead1, t)
+}
+
+allDataWriteMerged2 <- cbind(allDataWriteMerged2, featureType1, featureHead1)
+
+allDataWriteMerged2$featureType1 <- as.character(allDataWriteMerged2$featureType1)
+allDataWriteMerged2$featureHead1 <- as.character(allDataWriteMerged2$featureHead1)
+```
+
+```{r}
+allDataWriteMerged2 <- select(allDataWriteMerged2[allDataWriteMerged2$level != 1,], workerId, conditionCE, conditionHeadN, level, seenInTraining, arrayTraining, featureHead1, featureType1, clGramsFiltered)
+```
+
+Some data missing for one worker. Fill these in as uninterpretable 
+
+```{r  message=FALSE, warning=FALSE}
+library(data.table)
+allDataWriteMerged2$item2 <- as.integer(as.factor(allDataWriteMerged2$arrayTraining))
+DT = as.data.table(allDataWriteMerged2)
+setkey(DT,workerId, item2)
+DT <- DT[CJ(unique(workerId),seq(min(item2),max(item2)))]
+
+DT <- replace_na(DT, list(conditionCE = "branching", conditionHeadN = "head initial", featureType1 = "X", featureHead1 = "indeterminate", clGramsFiltered = " "))
+#still NA
+DT <- as.data.frame(DT)
+nas <- as.numeric(rownames(DT))[is.na(DT$level)]
+for (n in nas) {
+  for (k in 4:6) {
+  DT[n,k] <- DT[n-36,k]
+  }
+}
+allDataWriteMerged2 <- DT
+```
+
+```{r}
+#give each worker in-group a number
+allDataWriteMerged2 <- arrange(allDataWriteMerged2, conditionCE, conditionHeadN, workerId, level, desc(seenInTraining), item2)
+worker <- c()
+for (w in 1:120) {
+  writeCount = nrow(allDataWriteMerged2[allDataWriteMerged2$workerId == unique(allDataWriteMerged2$workerId)[w],])
+  worker <- c(worker, rep(w %%20, writeCount))
+
+}
+item <- c()
+for (w in unique(allDataWriteMerged2$workerId)) {
+  writeCount = nrow(allDataWriteMerged2[allDataWriteMerged2$workerId == w,])
+  item <- c(item, 1:writeCount)
+
+}
+allDataWriteMerged2 <- cbind(allDataWriteMerged2, item)
+allDataWriteMerged2 <- cbind(allDataWriteMerged2, worker)
+```
+
+## Graph of syntax type by condition
+
+```{r  message=FALSE, warning=FALSE}
+library(scales)
+allDataWriteMerged2$level <- as.factor(allDataWriteMerged2$level)
+allDataWriteMerged2$conditionHeadN <- as.factor(allDataWriteMerged2$conditionHeadN)
+allDataWriteMerged2$conditionCE <- as.factor(allDataWriteMerged2$conditionCE)
+allDataWriteMerged2$worker <- as.factor(as.character(allDataWriteMerged2$worker))
+allDataWriteMerged2$conditionHeadN <- relevel(allDataWriteMerged2$conditionHeadN, "head initial", "head final")
+allDataWriteMerged2$conditionCE <- relevel(allDataWriteMerged2$conditionCE, "crossed")
+allDataWriteMerged2$conditionCE <- relevel(allDataWriteMerged2$conditionCE, "center-embedding")
+```
+
+```{r}
+p<- ggplot( allDataWriteMerged2[allDataWriteMerged2$level != 1,], aes(x = worker, y = as.factor(item), fill = featureType1)) +
+  facet_grid(conditionCE ~ conditionHeadN)+
+  geom_bin2d()+
+  scale_y_discrete(labels = c(rep("", 3), "2 seen", rep("", 5),"2 new", rep("", 5),"3 seen", rep("", 5),"3 new", rep("", 7),"4 new", rep("", 6)))+
+  labs(fill = "Syntax Type", shape = "Head Order")+
+  scale_fill_manual(labels = c("Center-embedded", "Center-embedded/Crossed","Crossed", "Branching", "Uninterpretable"),  values =  hue_pal()(5)) +
+    geom_hline(yintercept=8.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen: 2 seen
+    geom_hline(yintercept=12.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 2 new
+  geom_hline(yintercept=20.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 3 seen
+  geom_hline(yintercept=24.5, size = .3, alpha = .6)+ 
+  #blocking off levels and seen/unseen 3 new/4 new
+ geom_point(aes(shape = featureHead1, color = featureHead1), size = 1)+
+  scale_shape_manual(labels = c("Final", "Indeterminate", "Initial"),  values =c(4, NA, 1)) +
+  scale_color_manual(labels = c("Final", "Indeterminate", "Initial"),  values =c("black", NA, "black"), guide = FALSE)+ 
+  theme_bw()+
+  guides(fill = guide_legend(override.aes = list(shape = NA)))+
+  theme(axis.ticks.y = element_blank(), 
+        axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+  ggsave(paste0(getwd(), "/syntax_strings_condition.png"), p, width=9, height=10)
+```
