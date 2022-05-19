@@ -308,6 +308,7 @@ p<-ggplot( allDataWriteMerged[allDataWriteMerged$level != 1,], aes(x = generatio
   guides(fill = guide_legend(override.aes = list(shape = NA)))+
   theme(axis.ticks.y = element_blank(),
         axis.title.y = element_blank())
+print(p)
   ggsave(paste0(getwd(), '/syntax_strings.png'),p,width=10, height=11)
  #ggsave 
 ```
