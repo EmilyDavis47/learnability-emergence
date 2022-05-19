@@ -1,0 +1,266 @@
+---
+title: "Experiment 2: Iterated Learning: Grammars"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+options(warn=-1)
+library(tidyverse)
+library(lubridate)
+library(stringdist)
+library(lme4)
+library(lmerTest)
+```
+
+## Import grammar file
+ "grammars" contains interpretations of every array in every grammar. 
+```{r}
+setwd('/Users/emilydavis/Desktop/paper data/Experiment2 iteration5gens')
+allGrammars  <- read.csv(paste0(getwd(), '/writeInsIterNewGrammar.csv'))
+listAllWriteIns <- read.csv(paste0(getwd(), '/writeInsIterNew.csv'))
+allGrammars <- arrange(allGrammars, workerId, time)
+listAllWriteIns <- arrange(listAllWriteIns, workerId, time)
+#make sure they're in the same order so comparisions work
+grammarcols <- c()
+for (c in colnames(allGrammars)) {
+  if (grepl("Grammar", c) == TRUE)
+    grammarcols <- c(grammarcols, c)
+}
+#grammars <- select(allGrammars, grammarcols)
+grammars <-allGrammars[,15:78]
+```
+
+## Best fit grammars for each string 
+
+```{r}
+closestGram <- list()
+for (n in 1:nrow(allGrammars)) {
+  comparisons <- c()
+  for (k in 1:ncol(grammars)) {
+    input <- as.character(allGrammars$encodingCorrected[n])
+    comp <- as.character(grammars[n,k])
+    ds <- stringdist(input, comp, method = "osa")/max(nchar(input), nchar(comp))
+    comparisons <- c(comparisons, ds)
+   closest <- which(comparisons == min(comparisons))
+  closestGram[[n]] <- grammarcols[closest]
+    }
+  }
+
+
+clGram <- c()
+for (n in 1:length(closestGram)) {
+  cl <- paste(closestGram[[n]], collapse = ' ')
+  clGram <- c(clGram, cl)
+}
+listAllWriteIns <- cbind(listAllWriteIns, clGram)
+listAllWriteIns$c <- str_count(listAllWriteIns$clGram, "Grammar")
+```
+
+```{r}
+clGramsFiltered <- c()
+possibleGrammars <- c()
+for (n in 1:nrow(listAllWriteIns)) {
+  grams <- strsplit(as.character(listAllWriteIns$clGram[n]), " ")[[1]]
+  gramsRemove <- c()
+  #remove wrong orientation
+ if (paste0(listAllWriteIns$prepM[n], listAllWriteIns$prepR[n]) == "leftatop") {
+   for (gram in grams) {
+     if (str_detect(gram, "m.Left.r.Atop") ==FALSE) {
+       gramsRemove <- c(gramsRemove,gram)
+     }
+   }
+ }
+  else if (paste0(listAllWriteIns$prepM[n], listAllWriteIns$prepR[n]) == "rightatop") {
+   for (gram in grams) {
+     if (str_detect(gram, "m.Right.r.Atop") ==FALSE) {
+       gramsRemove <- c(gramsRemove,gram)
+     }
+   }
+  } else if (paste0(listAllWriteIns$prepM[n], listAllWriteIns$prepR[n]) == "leftunder") {
+   for (gram in grams) {
+     if (str_detect(gram, "m.Left.r.Under") ==FALSE) {
+       gramsRemove <- c(gramsRemove,gram)
+     }
+   }
+ }
+ else if (paste0(listAllWriteIns$prepM[n], listAllWriteIns$prepR[n]) == "rightunder") {
+   for (gram in grams) {
+     if (str_detect(gram, "m.Right.r.Under") ==FALSE) {
+       gramsRemove <- c(gramsRemove,gram)
+     }
+   }
+ }
+if (length(grams) > length(gramsRemove)) { #if all possible grammars are ruled out, just keep them
+  gramsFiltered = grams[!grams %in% gramsRemove]
+   } else {
+     gramsFiltered = grams
+   }
+  gm <- paste(gramsFiltered, collapse = " ")
+  clGramsFiltered <- c(clGramsFiltered, gm)
+  possibleGrammars <- c(possibleGrammars, length(gramsFiltered))
+}
+listAllWriteIns <- cbind(listAllWriteIns, clGramsFiltered, possibleGrammars)
+```
+
+## Features
+
+Deconstruct the grammars into features. 
+
+```{r}
+featureType1 <- c() #CE, noCE, crossed
+for (i in 1:nrow(listAllWriteIns)) {
+  gs<- strsplit(as.character(listAllWriteIns$clGramsFiltered[i]), " ")[[1]]
+  types <- c()
+   for (g in gs) {
+  types <- c(types, str_extract(g, "CE|noCE|Crossed"))
+  types <- unique(types)
+    if (length(types) >= 2) {
+      if (length(types) == 2 && "CE" %in% types && "Crossed" %in% types) {
+        t <- paste0(types, collapse = " or ")
+      } else {
+    t <- "X"
+    }
+    } else {
+    t <- paste0(types, collapse = " ")
+    }
+}
+  featureType1 <- c(featureType1, t)
+}
+
+featureHead1 <- c() 
+for (i in 1:nrow(listAllWriteIns)) {
+  gs<- strsplit(as.character(listAllWriteIns$clGramsFiltered[i]), " ")[[1]]
+  heads <- c()
+   for (g in gs) {
+ heads <- c(heads, str_extract(g, "Initial|Final"))
+  heads <- unique(heads)
+    if (length(heads) >= 2) {
+ 	t <-"indeterminate"
+    } else {
+    t <- paste0(heads, collapse = " ")
+    }
+}
+  featureHead1 <- c(featureHead1, t)
+}
+
+listAllWriteIns <- cbind(listAllWriteIns, featureType1, featureHead1)
+```
+
+```{r}
+listAllWriteIns$gen <- as.factor(listAllWriteIns$gen)
+listAllWriteIns <- arrange(listAllWriteIns, workerId, time)
+listAllWriteIns <- cbind(listAllWriteIns, item = rep(1:40))
+
+```
+
+
+## Entropy 
+entropy of grammar distribution: graph and analyze
+
+```{r}
+entropy = function(s)
+{freq = prop.table(s)+ 1e-23 #to avoid divide by zero
+-sum(freq * log(freq, base = 2))}
+
+grammarListsGen <- listAllWriteIns %>% group_by(chain, gen, workerId) %>% summarize(grammarList = paste(clGramsFiltered, collapse = " "), featureList = paste(featureType1, collapse = " "))
+entropyG <- c()
+for (i in 1:nrow(grammarListsGen)) {
+  gList <- grammarListsGen$grammarList[i]
+  gNums <- c()
+  for (g in grammarcols) {
+    gNums <- c(gNums,str_count(gList, g))
+  }
+  entropyG <- c(entropyG, entropy(gNums))
+}
+grammarListsGen <- cbind(grammarListsGen, entropy = entropyG)
+sum <- summary(lmer(entropy ~ as.numeric(gen) + (1|chain), data = grammarListsGen))
+
+ggplot(grammarListsGen, aes(x = gen, y = entropy, group = chain, color = chain, alpha = .5)) +
+  geom_line()+
+  stat_summary(aes(colour="mean",group=1), fun= "mean", geom="line", color = "black", alpha = 1)+
+  guides(alpha = FALSE)+
+  xlab("generation")+
+  theme_bw()+
+  theme(legend.position = "none")
+```
+
+
+```{r eval = FALSE}
+listAllWriteIns2 <- listAllWriteIns[nchar(as.character(listAllWriteIns$array)) >1 & listAllWriteIns$seen == "true",]
+listAllWriteIns2 <- arrange(listAllWriteIns2, workerId, time)
+listAllWriteIns2$item <- c(1:16)
+listAllWriteIns3 <- listAllWriteIns[nchar(as.character(listAllWriteIns$array)) >1 & listAllWriteIns$seen == "false" & listAllWriteIns$gen != 0,]
+listAllWriteIns3 <- arrange(listAllWriteIns3, workerId, time)
+listAllWriteIns3$item <- c(17:36)
+listAllWriteIns2$featureType1 <- as.factor(as.character(listAllWriteIns2$featureType1))
+listAllWriteIns2$item <- as.factor(listAllWriteIns2$item)
+listAllWriteIns3$featureType1 <- as.factor(as.character(listAllWriteIns3$featureType1))
+listAllWriteIns3$item <- as.factor(listAllWriteIns3$item)
+```
+
+## Syntax type by chain, generation 
+
+Preparing for graph
+```{r message = FALSE}
+library(scales)
+listAllWriteIns$chain <- as.character(listAllWriteIns$chain)
+listAllWriteIns$featureType1 <- as.factor(as.character(listAllWriteIns$featureType1))
+listAllWriteIns$featureHead1 <- as.factor(as.character(listAllWriteIns$featureHead1))
+listAllWriteIns$featureType1[listAllWriteIns$gen== 0 & listAllWriteIns$seen == "false"] <- " "
+listAllWriteIns$featureHead1[listAllWriteIns$gen== 0 & listAllWriteIns$seen == "false"] <- " "
+
+
+#shuffle levels into proper order so blank is last 
+listAllWriteIns$featureType1 <- relevel(listAllWriteIns$featureType1, "X")
+listAllWriteIns$featureType1 <- relevel(listAllWriteIns$featureType1, "noCE")
+listAllWriteIns$featureType1 <- relevel(listAllWriteIns$featureType1, "Crossed")
+listAllWriteIns$featureType1 <- relevel(listAllWriteIns$featureType1, "CE or Crossed")
+listAllWriteIns$featureType1 <- relevel(listAllWriteIns$featureType1, "CE")
+
+listAllWriteIns$featureHead1 <- as.factor(listAllWriteIns$featureHead1)
+listAllWriteIns$featureHead1 <- relevel(listAllWriteIns$featureHead1, "Initial")
+listAllWriteIns$featureHead1 <- relevel(listAllWriteIns$featureHead1, "indeterminate")
+listAllWriteIns$featureHead1 <- relevel(listAllWriteIns$featureHead1, "Final")
+```
+
+```{r}
+#blanking values for unseen items at Gen 0
+p<- ggplot( listAllWriteIns[listAllWriteIns$level != 1,], aes(x = gen, y = as.factor(item), fill = featureType1)) +
+  facet_wrap(~chain, ncol = 4)+
+  geom_bin2d()+
+  xlab("generation")+  
+  scale_y_discrete(labels = c(rep("", 3), "2 seen", rep("", 5),"2 new", rep("", 5),"3 seen", rep("", 5),"3 new", rep("", 7),"4 new", rep("", 6)))+
+  labs(fill = "Syntax Type", shape = "Head Order")+
+  scale_fill_manual(labels = c("Center-embedded", "Center-embedded/Crossed", "Crossed", "Branching", "Uninterpretable", ""),  values = c( hue_pal()(5), NA)) +
+  geom_point(aes(shape = featureHead1, color = featureHead1), size = 1)+
+  scale_shape_manual(labels = c("Final", "Indeterminate", "Initial", ""),  values =c(4, NA, 1, NA)) +
+  scale_color_manual(labels = c("Final", "Indeterminate", "Initial", ""),  values =c("black", NA,"black",  NA), guide = FALSE)+
+    geom_hline(yintercept=8.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen: 2 seen
+    geom_hline(yintercept=12.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 2 new
+  geom_hline(yintercept=20.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 3 seen
+  geom_hline(yintercept=24.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 3 new/4 new
+  theme_bw()+
+  guides(fill = guide_legend(override.aes = list(shape = NA)))+
+  theme(axis.ticks.y = element_blank(),
+        axis.title.y = element_blank())
+print(p)
+ ggsave(paste0( getwd(), "/syntax_strings.png"), p, width=8, height=11)
+```
+
+
+
+Output models to HTML
+```{r message= FALSE}
+library(sjPlot)
+
+entrop<- as.data.frame(coefficients(sum))
+rownames(entrop) <-gsub("Intercept", "Generation 0", rownames(entrop))
+rownames(entrop) <-gsub("as.numeric\\(gen\\)", "Generation", rownames(entrop))
+library(sjmisc)
+allModels <- list(entrop)
+for (i in 1:length(allModels)) {
+  allModels[[i]] <- round_num(allModels[[i]], 3)
+allModels[[i]][,ncol(allModels[[i]])][allModels[[i]][,ncol(allModels[[i]])] == 0] <- "< .001"
+}
+tab_dfs(allModels, titles = c("Entropy"), file = paste0(getwd(),'tables-gram.html'))
+```
