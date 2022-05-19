@@ -96,7 +96,7 @@ allDataWrite <- analyzeWriting(dataFiles)
 Setting up for Helmert contrasts 
 
 ```{r}
-#get branching and crossed together 
+#get CE and crossed together 
 allDataTestingMerged$conditionCE <- as.character(allDataTestingMerged$conditionCE)
 
 allDataTestingMerged$conditionHeadN <- as.character(allDataTestingMerged$conditionHeadN)
@@ -129,7 +129,8 @@ ggplot(allDataTestingLevel, aes(x= level, y= level_score, fill = level))+
   ylab("Proportion correct")+
    theme_bw()
 ```
-Mixed effects model of correct-answer rates on comprehension tests by level. 
+
+#Mixed effects model of correct-answer rates on comprehension tests by level. 
 ```{r  message=FALSE, warning=FALSE}
 testLmerInteract2 <- glmer(correct ~ level* conditionCE * conditionHeadN + (1 +level|workerId), data = allDataTestingMerged[!allDataTestingMerged$level %in% c("ADP","OBJ"),], family = "binomial")
 contrasts(allDataTestingMerged$conditionCE)

@@ -277,4 +277,5 @@ p<- ggplot( allDataWriteMerged2[allDataWriteMerged2$level != 1,], aes(x = worker
         axis.title.x = element_blank(),
         axis.title.y = element_blank())
   ggsave(paste0(getwd(), "/syntax_strings_condition.png"), p, width=9, height=10)
+  print(p)
 ```
