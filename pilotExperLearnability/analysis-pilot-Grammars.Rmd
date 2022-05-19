@@ -10,7 +10,7 @@ library(lme4)
 library(lmerTest)
 ```
 
-##Import grammar file
+## Import grammar file
 
 Grammar file is imported. "grammars" contains interpretations of every array in every grammar. 
 ```{r}
@@ -239,6 +239,7 @@ p<-ggplot( allDataWriteMerged2[allDataWriteMerged2$level != 0,], aes(x = worker,
         axis.ticks.x = element_blank(), axis.text.x = element_blank(),
         axis.title.x = element_blank(),
         axis.title.y = element_blank())
+print(p)
   ggsave(paste0(getwd(), '/syntax_strings_condition.png'), p,width=8, height=8)
 ```
 
