@@ -1,0 +1,461 @@
+---
+title: "Pilot Experiment 1: Learnability"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+options(warn=-1)
+library (tidyverse)
+library(lubridate)
+library(stringdist)
+library(lme4)
+library(lmerTest)
+library(MASS)
+library(dplyr)
+```
+
+## Needed functions
+Create dataframes for compehension tests and write-in data. 
+
+```{r}
+analyze<- function(datas) {
+  dataTesting <-list()
+  scores <- c()
+  for (i in 1:length(datas)) {
+    dataTesting[[i]] <- datas[[i]][datas[[i]]$trialType == "testing",]
+    dataTesting[[i]]$correct = dataTesting[[i]]$correctChoiceNumber == dataTesting[[i]]$participantChoiceNumber
+  }
+  return(dataTesting)
+}
+
+analyzeMeanTesting <- function(dataTesting) {
+  dataTestingLevel <- list()
+  for (i in 1:length(dataTesting)) {
+    dataTestingLevel[[i]] <- dataTesting[[i]] %>%
+      group_by(level)  %>% 
+      summarize(level_score = sum(correct)/length(correct))
+    dataTestingLevel[[i]]$condition <- rep(dataTesting[[i]]$condition[1], 3)
+    dataTestingLevel[[i]]$conditionCE <- rep(dataTesting[[i]]$conditionCE[1], 3)
+    dataTestingLevel[[i]]$conditionHeadN <- rep(dataTesting[[i]]$conditionHeadN[1], 3)
+    dataTestingLevel[[i]]$user <- rep(dataTesting[[i]]$workerId[1], 3)
+  }
+  dataTestingLevelAllUsers <- rbind()
+  for (dat in dataTestingLevel) {
+    dataTestingLevelAllUsers <- rbind(dataTestingLevelAllUsers, dat)
+  }
+  return(dataTestingLevelAllUsers)
+}
+
+
+analyzeWritingMeans<- function (data_write) {
+  data_write_level <- list()
+  for (j in 1:length(data_write)) {
+    data_write_level[[j]] <- data_write[[j]] %>% group_by(level) %>% summarize(meanC = mean(correctness))
+    data_write_level[[j]]$condition <- rep(data_write[[j]]$condition[1], 4)
+    data_write_level[[j]]$conditionCE <- rep(data_write[[j]]$conditionCE[1], 4)
+    data_write_level[[j]]$conditionHeadN <- rep(data_write[[j]]$conditionHeadN[1], 4)
+    data_write_level[[j]]$user<- rep(data_write[[j]]$workerId[1], 4)
+  }
+  
+  data_write_levelAll <- rbind()
+  for (d in data_write_level) {
+    data_write_levelAll <- rbind(data_write_levelAll, d)
+  }
+  return (data_write_levelAll)
+}
+
+```
+
+## Processing the data
+
+
+Import task data and demographic files, which have been anonymized. 
+
+```{r warning =FALSE, message= FALSE}
+setwd("/Users/emilydavis/Desktop/paper data/pilotExperLearnability")
+dataAnon <- read.csv(paste0(getwd(), '/allDataAnonPilot.csv'))
+prepList <- read.csv(paste0(getwd(), '/prepListPilot.csv'))
+dataAnon$conditionCE[dataAnon$conditionCE == "no center-embedding"] <- "branching"
+dataFiles <- split(dataAnon, dataAnon$workerId)
+allDataWriteMerged <- dataAnon[dataAnon$trialType == "write",]
+allDataTesting <- analyze(dataFiles)
+allDataTestingMerged <- rbind()
+for (dat in allDataTesting) {
+  allDataTestingMerged <- rbind(allDataTestingMerged, dat)
+}
+allDataTestingLevel <- analyzeMeanTesting(allDataTesting)
+allDataTestingMean <- allDataTestingLevel %>% group_by(conditionCE, conditionHeadN, level) %>% summarize(level_score = mean(level_score))
+```
+## Comprehension
+
+```{r results='hide', message=FALSE, warning=FALSE}
+allDataTestingLevel$level <- as.factor(allDataTestingLevel$level)
+allDataTestingLevel$conditionHeadN <- as.factor(allDataTestingLevel$conditionHeadN)
+allDataTestingLevel$conditionCE <- as.factor(allDataTestingLevel$conditionCE)
+allDataTestingLevel$conditionHeadN <- relevel(allDataTestingLevel$conditionHeadN, "head initial", "head final")
+allDataTestingLevel$conditionCE <- relevel(allDataTestingLevel$conditionCE, "center-embedding")
+ggplot(allDataTestingLevel, aes(x= level, y= level_score, fill = level))+
+  stat_summary(aes(fill = level,group=1), fun= "mean", geom="point", pch = 23, size = 3) +
+  geom_dotplot(binaxis='y',stackdir='center', alpha = .5)+
+  facet_grid(conditionCE ~ conditionHeadN)+
+  scale_x_discrete(name = "level", labels = c("1", "2", "3"))+
+  scale_fill_discrete(guide=FALSE)+
+  ylab("Proportion correct")+
+   theme_bw()
+```
+
+
+Mixed effects model of correct-answer rates on comprehension tests by level. 
+```{r message=FALSE, warning=FALSE}
+allDataTestingMerged$level <- as.factor(allDataTestingMerged$level)
+allDataTestingMerged$conditionHeadN <- as.factor(allDataTestingMerged$conditionHeadN)
+allDataTestingMerged$conditionCE <- as.factor(allDataTestingMerged$conditionCE)
+contrasts(allDataTestingMerged$conditionCE) <- contr.sum(2)
+contrasts(allDataTestingMerged$conditionHeadN) <- contr.sum(2)
+contrasts(allDataTestingMerged$level) <- contr.sdif(3)
+testLmerInteract <- glmer(correct ~ level* conditionCE * conditionHeadN + (1 +level|workerId), data = allDataTestingMerged, family = "binomial")
+
+```
+
+
+
+# Write-in accuracy
+(This stage is simplified a lot in the subsequent experiments)
+
+First create a lexicon for each user, consisting of the correct versions of the nouns and prepositions. 
+
+```{r}
+correctLexicon <- c()
+for (worker in unique(allDataWriteMerged$workerId)) {
+  workerTrials <- nrow(allDataWriteMerged[allDataWriteMerged$workerId == worker,])
+  nouns <- as.character(allDataWriteMerged[allDataWriteMerged$workerId == worker,]$compositionalAnswer[1:4])
+  participantCorrects <- paste(c(nouns, "rae", "moy"), collapse = " ")
+  correctLexicon <- c(correctLexicon, rep(participantCorrects, workerTrials))
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, correctLexicon)
+allDataWriteMerged$correctLexicon <- as.character(allDataWriteMerged$correctLexicon)
+allDataWriteMerged$participantText <- as.character(allDataWriteMerged$participantText)
+allDataWriteMerged$participantText[is.na(allDataWriteMerged$participantText)] <- ' '
+```
+
+Correct user's input so that each word becomes the closest (lowest normalized edit distance) word in the lexicon. If words are equidistant from two correct words, pick the first on the list. Unidentifiable words (too far in edit distance from any lexicon word) and a few known English words are notated as X. 
+
+```{r}
+correctedAnswers <- c()
+for (i in 1:nrow(allDataWriteMerged)) {
+  #remove extra spaces 
+  entry <- gsub("\\s+", " ", str_trim(allDataWriteMerged$participantText[i]))
+  split <- strsplit(entry, " ")[[1]]
+  correctedWords <- c()
+  for (word in split) {
+    word = tolower(word)
+    dists <- c()
+    corrects <- strsplit(allDataWriteMerged$correctLexicon[i], " ")[[1]]
+    for (c in corrects) {
+      ds <- stringdist(word, c, method = "osa")/max(nchar(word), nchar(c))
+      dists <- c(dists, ds)
+    }
+    closest <- which(dists == min(dists))
+    #if equidistant, choose one
+    english = c("and", "aside")
+    if (min(dists) > .75 || word %in% english) {
+      correctedWords <- c(correctedWords, "X")
+    } else {
+    if (length(closest) > 1) {
+      correctedWords <- c(correctedWords, corrects[closest[1]])
+    } else {
+    correctedWords <- c(correctedWords, corrects[closest])
+    }
+    }
+  }
+  cor <- paste(correctedWords, collapse = " ")
+  correctedAnswers  <- c(correctedAnswers, cor)
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, correctedAnswers)
+```
+
+Now encode the corrected and compositional columns as initials, and compare by OSA. 
+
+```{r}
+encodingCompositional <- c()
+encodingCorrected <- c()
+for (i in 1:nrow(allDataWriteMerged)) {
+  splitP <- strsplit(as.character(allDataWriteMerged$compositionalAnswer[i]), " ")[[1]]
+  initialsP <- c()
+  for (word in splitP) {
+   initialsP <- c(initialsP, substring(word, 1, 1))
+    }
+  initP <- paste(initialsP, collapse = "")
+  encodingCompositional <- c(encodingCompositional, initP)
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, encodingCompositional)
+
+for (i in 1:nrow(allDataWriteMerged)) {
+  splitC <- strsplit(as.character(allDataWriteMerged$correctedAnswers[i]), " ")[[1]]
+  initialsC <- c()
+  for (word in splitC) {
+    initialsC <- c(initialsC, substring(word, 1, 1))
+  }
+  initC <- paste(initialsC, collapse = "")
+  encodingCorrected <- c(encodingCorrected, initC)
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, encodingCorrected)
+normedCorrectness <- c()
+for (i in 1:nrow(allDataWriteMerged)) {
+  longer = max( 
+nchar(as.character(allDataWriteMerged$encodingCompositional[i])), nchar(as.character(allDataWriteMerged$encodingCorrected[i])) )
+  normedC <- 1- (stringdist(as.character(allDataWriteMerged$encodingCompositional[i]),
+                            as.character(allDataWriteMerged$encodingCorrected[i]),
+                                      method = "osa")/longer)
+  
+  normedCorrectness <- c(normedCorrectness, normedC)
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, normedCorrectness)
+```
+
+
+Graph and analyze normed correctness: 
+```{r warning =FALSE, message= FALSE}
+allDataWriteMerged$conditionCE <- as.character(allDataWriteMerged$conditionCE)
+allDataWriteMerged$conditionCE <- factor(allDataWriteMerged$conditionCE)
+allDataWriteMerged$conditionHeadN <- as.character(allDataWriteMerged$conditionHeadN)
+allDataWriteMerged$conditionHeadN <- factor(allDataWriteMerged$conditionHeadN)
+analyzeWritingMeansN<- function (data_write, lev) {
+  data_write_level <- list()
+  for (j in 1:length(data_write)) {
+    data_write_level[[j]] <- data_write[[j]] %>% group_by(level) %>% summarize(meanC = mean(normedCorrectness))
+    data_write_level[[j]]$condition <- rep(data_write[[j]]$condition[1], lev)
+    data_write_level[[j]]$conditionCE <- rep(data_write[[j]]$conditionCE[1], lev)
+    data_write_level[[j]]$conditionHeadN <- rep(data_write[[j]]$conditionHeadN[1], lev)
+    data_write_level[[j]]$user<- rep(data_write[[j]]$workerId[1], lev)
+  }
+  
+  data_write_levelAll <- rbind()
+  for (d in data_write_level) {
+    data_write_levelAll <- rbind(data_write_levelAll, d)
+  }
+  return (data_write_levelAll)
+}
+writeList <- split(allDataWriteMerged, f = allDataWriteMerged$workerId)
+allDataWriteMeansNormed <- analyzeWritingMeansN(writeList, 4)
+
+allDataWriteMeansNormed$conditionHeadN <- relevel(allDataWriteMeansNormed$conditionHeadN, "head initial", "head final")
+allDataWriteMeansNormed$conditionCE <- relevel(allDataWriteMeansNormed$conditionCE, "center-embedding")
+allDataWriteMeansNormed$level <- as.factor(allDataWriteMeansNormed$level)
+ggplot(allDataWriteMeansNormed, aes(x= level, y= meanC, fill = level))+
+  stat_summary(aes(fill = level,group=1), fun= "mean", geom="point", pch = 23, size = 3) +
+  geom_dotplot(binaxis='y',stackdir='center', alpha = .5)+
+  facet_grid(conditionCE ~ conditionHeadN)+
+  ylab("Mean correctness")+
+  scale_fill_discrete(name = "level", labels = c("1", "2", "3", "4"))+ 
+  scale_x_discrete(name = "level", labels = c("1", "2", "3", "4"))+
+  theme_bw()+ 
+  theme(legend.position = "none")
+
+contrasts(allDataWriteMerged$conditionCE) <- contr.sum(2)
+contrasts(allDataWriteMerged$conditionHeadN) <- contr.sum(2)
+allDataWriteMerged$level <- as.numeric(allDataWriteMerged$level)
+writeLmerNormed <- lmer(normedCorrectness ~ as.numeric(level-1)* conditionCE * conditionHeadN + (1 +as.numeric(level-1)|workerId), data = allDataWriteMerged)
+summary(writeLmerNormed)
+```
+## Seen vs. unseen arrays
+
+"scales" is used to get a consistent and aesthetically pleasing color scheme shared across the different graphs. 
+
+```{r warning =FALSE, message= FALSE}
+library(scales)
+colors <- hue_pal()(4)
+adwmSeen <- allDataWriteMerged[allDataWriteMerged$seenInTesting == "true",]
+adwmSeen$level <- as.factor(adwmSeen$level)
+writeListSeen <- split(adwmSeen, f = adwmSeen$workerId)
+allDataWriteMeansNormedSeen <- analyzeWritingMeansN(writeListSeen, 3)
+allDataWriteMeansNormedSeen$conditionHeadN <- relevel(allDataWriteMeansNormedSeen$conditionHeadN, "head initial", "head final")
+allDataWriteMeansNormedSeen$conditionCE <- relevel(allDataWriteMeansNormedSeen$conditionCE, "center-embedding")
+allDataWriteMeansNormedSeen$level <- as.factor(allDataWriteMeansNormedSeen$level)
+ggplot(allDataWriteMeansNormedSeen, aes(x= level, y= meanC, fill = level))+
+  facet_grid(conditionCE ~ conditionHeadN)+
+  scale_x_discrete(name = "level", labels = c("1", "2", "3"))+
+  stat_summary(aes(fill = level,group=1), fun= "mean", geom="point", pch = 23, size = 3) +
+  geom_dotplot(binaxis='y',stackdir='center', alpha = .5)+
+  ylab("Correctness")+
+  scale_fill_manual(values = colors[1:3] , labels = c("1", "2", "3"))+
+  theme_bw()+ 
+  theme(legend.position = "none")
+
+adwmUnSeen <- allDataWriteMerged[allDataWriteMerged$seenInTraining == "false",]
+adwmUnSeen$level <- as.factor(adwmUnSeen$level)
+writeListUnSeen <- split(adwmUnSeen, f = adwmUnSeen$workerId)
+allDataWriteMeansNormedUnSeen <- analyzeWritingMeansN(writeListUnSeen, 3)
+allDataWriteMeansNormedUnSeen$conditionHeadN <- relevel(allDataWriteMeansNormedUnSeen$conditionHeadN, "head initial", "head final")
+allDataWriteMeansNormedUnSeen$conditionCE <- relevel(allDataWriteMeansNormedUnSeen$conditionCE, "center-embedding")
+allDataWriteMeansNormedUnSeen$level <- as.factor(allDataWriteMeansNormedUnSeen$level)
+ggplot(allDataWriteMeansNormedUnSeen, aes(x= level, y= meanC, fill = level)) +
+  facet_grid(conditionCE ~ conditionHeadN)+
+  scale_x_discrete(name = "level", labels = c("2", "3", "4"))+
+  stat_summary(aes(fill = level,group=1), fun= "mean", geom="point", pch = 23, size = 3)+
+  geom_dotplot(binaxis='y',stackdir='center', alpha = .5)+
+  ylab("Correctness")+
+  scale_fill_manual(values = colors[2:4] , labels = c("2", "3", "4"))+
+  theme_bw()+ 
+  theme(legend.position = "none")
+allDataWriteMerged$seenInTraining <- as.factor(allDataWriteMerged$seenInTraining)
+contrasts(allDataWriteMerged$seenInTraining) <- contr.sum(2)
+writeLmerNormedSeen <- lmer(normedCorrectness ~ level* conditionCE * conditionHeadN * seenInTraining+ (1 +level|workerId), data = allDataWriteMerged[allDataWriteMerged$level %in% c(1,2),])
+summary(writeLmerNormedSeen)
+
+```
+
+```{r warning =FALSE, message= FALSE}
+allDataTestingMerged$seenInTraining <- as.factor(allDataTestingMerged$seenInTraining)
+contrasts(allDataTestingMerged$seenInTraining) <- contr.sum(2)
+
+
+analyzeWritingMeansNSeen<- function (data_write, lev) {
+  data_write_level <- list()
+  for (j in 1:length(data_write)) {
+    data_write_level[[j]] <- data_write[[j]] %>% group_by(level, seenInTraining) %>% summarize(meanC = mean(normedCorrectness))
+    data_write_level[[j]]$condition <- rep(data_write[[j]]$condition[1], lev)
+    data_write_level[[j]]$conditionCE <- rep(data_write[[j]]$conditionCE[1], lev)
+    data_write_level[[j]]$conditionHeadN <- rep(data_write[[j]]$conditionHeadN[1], lev)
+    data_write_level[[j]]$user<- rep(data_write[[j]]$workerId[1], lev)
+  }
+  
+  data_write_levelAll <- rbind()
+  for (d in data_write_level) {
+    data_write_levelAll <- rbind(data_write_levelAll, d)
+  }
+  return (data_write_levelAll)
+}
+adwmSeenUnseen <- analyzeWritingMeansNSeen(writeList, 6)
+```
+
+```{r}
+adwmSeenUnseen$level<- factor(adwmSeenUnseen$level)
+adwmSeenUnseen12 <- adwmSeenUnseen[adwmSeenUnseen$level %in% c(1,2),]
+adwmSeenUnseen12$x <- paste0(adwmSeenUnseen12$level, adwmSeenUnseen12$seenInTraining)
+adwmSeenUnseen12$conditionHeadN <- relevel(adwmSeenUnseen12$conditionHeadN, "head initial", "head final")
+adwmSeenUnseen12$conditionCE <- relevel(adwmSeenUnseen12$conditionCE, "center-embedding")
+ggplot(adwmSeenUnseen12, aes(x= x, y= meanC, fill = seenInTraining)) +
+  stat_summary(aes(group=seenInTraining, fill = seenInTraining), fun.y= "mean", geom="point", pch = 23, size = 3)+
+  geom_dotplot(binaxis='y',stackdir='center', alpha = .5)+
+  facet_grid(conditionCE ~ conditionHeadN)+
+  scale_x_discrete(name = "level", labels = c("2 unseen", "2 seen", "3 unseen", "3 seen"))+
+  ylab("Correctness")+
+  scale_color_manual(labels = c("2","2", "3", "3")) +
+  theme_bw()+ 
+  theme(legend.position = "none")
+```
+
+```{r}
+contrasts(adwmSeen$level) <- contr.sdif(3)
+contrasts(adwmUnSeen$level) <- contr.sdif(3)
+
+contrasts(adwmSeen$conditionCE) <- contr.sum(2)
+contrasts(adwmSeen$conditionHeadN) <- contr.sum(2)
+contrasts(adwmUnSeen$conditionCE) <- contr.sum(2)
+contrasts(adwmUnSeen$conditionHeadN) <- contr.sum(2)
+writeLmerNormedAllSeen <- lmer(normedCorrectness ~ level* conditionCE * conditionHeadN + (1 +level|workerId), data = adwmSeen)
+summary(writeLmerNormedAllSeen)
+writeLmerNormedAllNoSeen <- lmer(normedCorrectness ~ level* conditionCE * conditionHeadN + (1 +level|workerId), data = adwmUnSeen)
+summary(writeLmerNormedAllNoSeen)
+```
+
+## Coding prepositional meanings
+
+Not all participants interpret the prepositions are they are defined in the compositional language. "Moy" is "to the (viewer's) left of" and "rae" is "atop," but some make the opposite interpretations, or are simply not sure. Coding of user interpretations has been done manually.
+
+Prepositions are encoded as follows: A = atop; U = under; E = indef vertical or stacked; N = next to or indef horizontal; R = right of; X = undefined or uninterpretable response. 
+```{r}
+PH <- c("X", "N", "N", "R", "N", "N", "N", "R", "N", "X",
+"N", "N", "N", "N", "N", "X", "N", "N", "N", "N", 
+"R", "R", "X", "X", "N", "N", "N", "N", "N", "N", 
+"N", "N", "N", "E", "N", "R", "N", "N", "N", "R", 
+"X", "N", "X", "N", "N", "N", "N", "N", "X", "X",
+"N", "N", "N", "N", "N", "N", "N", "X", "N", "N", 
+"N", "N", "N", "N", "N", "X", "N", "N", "X", "R", 
+"N", "N", "N", "N", "X", "N", "X", "N", "N", "U")
+
+PV <- c("X", "A", "E", "U", "A", "E", "E", "U", "A", "X",
+"E", "E", "A", "A", "A", "X", "A", "A", "A", "E", 
+"U", "U", "X", "X", "E", "A", "A", "E", "E", "E", 
+"A", "E", "E", "N", "A", "U", "E", "A", "E", "U", 
+"X", "E", "X", "U", "E", "U", "U", "E", "X", "X",
+"A", "A", "A", "E", "E", "A", "A", "X", "A", "A", 
+"A", "A", "U", "E", "E", "X", "E", "A", "X", "A", 
+"A", "A", "A", "U", "X", "E", "X", "A", "A", "N")
+prepList <- cbind(prepList, PH, PV)
+prepHorizGloss <-c()
+prepVertGloss <- c()
+for (w in prepList$workerId) {
+  writeCount = nrow(allDataWriteMerged[allDataWriteMerged$workerId == w,])
+  prepHorizGloss <- c(prepHorizGloss, rep(as.character(prepList$PH[prepList$workerId== w]), each = writeCount))
+  prepVertGloss <- c(prepVertGloss, rep(as.character(prepList$PV[prepList$workerId== w]), each = writeCount))
+}
+allDataWriteMerged <- cbind(allDataWriteMerged, prepHorizGloss, prepVertGloss)
+```
+
+## Creating write-in file
+
+Saving initials of given nouns for further analysis. Nouns will be used to create strings in all possible grammars that users may be using (in the python program described below), to which their corrected, abbreviated input can be compared. 
+
+```{r}
+consonants <- c()
+for (n in 1:nrow(allDataWriteMerged)) {
+consonants <- c(consonants, paste0(sapply(strsplit(as.character(allDataWriteMerged$correctLexicon[n]), " "), function(x) {substring(x, 1,1)})[0:4], collapse = ""))}
+allDataWriteMerged <- cbind(allDataWriteMerged, consonants)
+
+write.csv(allDataWriteMerged,paste0(getwd(), '/allDataWritePilotLrn1.csv'))
+
+```
+
+The resulting CSV is then fed through the python file "array to caption syntax orders" 
+
+Output models to HTML
+```{r}
+library(sjPlot)
+a<- as.data.frame(coefficients(summary(testLmerInteract)))
+rownames(a) <-gsub("Intercept", "level 1/branching/head-initial", rownames(a))
+rownames(a) <-gsub("as.numeric\\(level - 1\\)", "level 3", rownames(a))
+rownames(a) <-gsub("conditionCE1", "center-embedded", rownames(a))
+rownames(a) <-gsub("conditionHeadN1", "head-final", rownames(a))
+rownames(a) <-gsub(":", "/", rownames(a))
+
+b<- as.data.frame(coefficients(summary(writeLmerNormed)))
+rownames(b) <-gsub("Intercept", "level 1/branching/head-initial", rownames(b))
+rownames(b) <-gsub("as.numeric\\(level - 1\\)", "level", rownames(b))
+rownames(b) <-gsub("conditionCE1", "center-embedding", rownames(b))
+rownames(b) <-gsub("conditionHeadN1", "head-final", rownames(b))
+rownames(b) <-gsub(":", "/", rownames(b))
+
+c<- as.data.frame(coefficients(summary(writeLmerNormedSeen)))
+rownames(c) <-gsub("Intercept", "level 2/branching/head-initial/unseen", rownames(c))
+rownames(c) <-gsub("level", "level 3", rownames(c))
+rownames(c) <-gsub("conditionCE1", "center-embedding", rownames(c))
+rownames(c) <-gsub("conditionHeadN1", "head-final", rownames(c))
+rownames(c) <-gsub("seenInTraining1", "unseen", rownames(c))
+rownames(c) <-gsub(":", "/", rownames(c))
+
+d<- as.data.frame(coefficients(summary(writeLmerNormedAllSeen)))
+rownames(d) <-gsub("Intercept", "level 1/branching/head-initial", rownames(d))
+rownames(d) <-gsub("as.numeric\\(level - 1\\)", "level", rownames(d))
+rownames(d) <-gsub("conditionCE1", "center-embedding", rownames(d))
+rownames(d) <-gsub("conditionHeadN1", "head-final", rownames(d))
+rownames(d) <-gsub(":", "/", rownames(d))
+
+e<- as.data.frame(coefficients(summary(writeLmerNormedAllNoSeen)))
+rownames(e) <-gsub("Intercept", "level 2/branching/head-initial", rownames(e))
+rownames(e) <-gsub("as.numeric\\(level - 1\\)", "level", rownames(e))
+rownames(e) <-gsub("conditionCE1", "center-embedding", rownames(e))
+rownames(e) <-gsub("conditionHeadN1", "head-final", rownames(e))
+rownames(e) <-gsub(":", "/", rownames(e))
+rownames(e) <-gsub("3-2", "4-3", rownames(e))
+rownames(e) <-gsub("2-1", "3-2", rownames(e))
+
+library(sjmisc)
+allModels <- list(a, b,c, d, e)
+for (i in 1:length(allModels)) {
+  allModels[[i]] <- round_num(allModels[[i]], 3)
+allModels[[i]][,ncol(allModels[[i]])][allModels[[i]][,ncol(allModels[[i]])] == 0] <- "< .001"
+}
+tab_dfs(allModels, titles = c("Comprehension task", "Production task", "Seen vs. unseen arrays", "Production task: seen only", "Production task: novel only"), file = paste0(getwd(), '/tables.html'))
+```
