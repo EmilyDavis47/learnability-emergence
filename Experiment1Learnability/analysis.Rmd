@@ -72,10 +72,12 @@ analyzeWriting <- function(datas) {
 Import task data and demographic files, which have been anonymized. 
 
 ```{r results='hide', message=FALSE, warning=FALSE}
-setwd("/Users/emilydavis/Desktop/paper data/Experiment1Learnability")
+setwd("/Users/emilydavis/Downloads/paper data/Experiment1Learnability")
 dataAnon <- read.csv(paste0(getwd(), '/allDataAnon.csv'))
 prepList <- read.csv(paste0(getwd(), '/prepList.csv'))
 dataAnon$conditionCE[dataAnon$conditionCE == "no center-embedding"] <- "branching"
+dataAnon$conditionHeadN[dataAnon$conditionHeadN == "head initial"] <- "noun initial"
+dataAnon$conditionHeadN[dataAnon$conditionHeadN == "head final"] <- "noun final"
 dataAnon$conditionCE <- factor(dataAnon$conditionCE)
 dataFiles <- split(dataAnon, dataAnon$workerId)
 
@@ -114,7 +116,7 @@ allDataTestingLevel$level <- as.factor(allDataTestingLevel$level)
 allDataTestingLevel$conditionHeadN <- as.factor(allDataTestingLevel$conditionHeadN)
 allDataTestingLevel$conditionCE <- as.factor(allDataTestingLevel$conditionCE)
 
-allDataTestingLevel$conditionHeadN <- relevel(allDataTestingLevel$conditionHeadN, "head initial", "head final")
+allDataTestingLevel$conditionHeadN <- relevel(allDataTestingLevel$conditionHeadN, "noun initial", "noun final")
 
 allDataTestingLevel$conditionCE <- relevel(allDataTestingLevel$conditionCE, "crossed")
 allDataTestingLevel$conditionCE <- relevel(allDataTestingLevel$conditionCE, "center-embedding")
@@ -340,7 +342,7 @@ analyzeWritingMeansNSeen<- function (data_write, lev) {
 }
 adwmSeenUnseen <- analyzeWritingMeansNSeen(writeList, 6)
 adwmSeenUnseen$conditionCE <- as.factor(adwmSeenUnseen$conditionCE)
-adwmSeenUnseen$conditionHeadN <- relevel(adwmSeenUnseen$conditionHeadN, "head initial", "head final")
+adwmSeenUnseen$conditionHeadN <- relevel(adwmSeenUnseen$conditionHeadN, "noun initial", "noun final")
 adwmSeenUnseen$conditionCE <- relevel(adwmSeenUnseen$conditionCE, "crossed")
 adwmSeenUnseen$conditionCE <- relevel(adwmSeenUnseen$conditionCE, "center-embedding")
 adwmSeenUnseen$group <- as.factor(paste0(adwmSeenUnseen$level, adwmSeenUnseen$seenInTraining))

@@ -12,8 +12,12 @@ Grammar file is imported. "grammars" contains interpretations of every array in 
 library(stringdist)
 library (tidyverse)
 library(lmerTest)
-setwd("/Users/emilydavis/Desktop/paper data/Experiment1Learnability")
+setwd("/Users/emilydavis/Downloads/paper data/Experiment1Learnability")
 allDataWriteMerged2 <-read.csv(paste0(getwd(), '/allDataWriteMergedGrammars.csv'))
+
+#correct condition names so they show up correctly on all graphs
+allDataWriteMerged2$conditionHeadN[allDataWriteMerged2$conditionHeadN == "head initial"] <- "noun initial"
+allDataWriteMerged2$conditionHeadN[allDataWriteMerged2$conditionHeadN == "head final"] <- "noun final"
 ```
 
 Manually cleaning up some entries where write-in answers are synonymous with "left" or "Horizontal." 
@@ -211,7 +215,7 @@ DT = as.data.table(allDataWriteMerged2)
 setkey(DT,workerId, item2)
 DT <- DT[CJ(unique(workerId),seq(min(item2),max(item2)))]
 
-DT <- replace_na(DT, list(conditionCE = "branching", conditionHeadN = "head initial", featureType1 = "X", featureHead1 = "indeterminate", clGramsFiltered = " "))
+DT <- replace_na(DT, list(conditionCE = "branching", conditionHeadN = "noun initial", featureType1 = "X", featureHead1 = "indeterminate", clGramsFiltered = " "))
 #still NA
 DT <- as.data.frame(DT)
 nas <- as.numeric(rownames(DT))[is.na(DT$level)]
@@ -250,7 +254,7 @@ allDataWriteMerged2$level <- as.factor(allDataWriteMerged2$level)
 allDataWriteMerged2$conditionHeadN <- as.factor(allDataWriteMerged2$conditionHeadN)
 allDataWriteMerged2$conditionCE <- as.factor(allDataWriteMerged2$conditionCE)
 allDataWriteMerged2$worker <- as.factor(as.character(allDataWriteMerged2$worker))
-allDataWriteMerged2$conditionHeadN <- relevel(allDataWriteMerged2$conditionHeadN, "head initial", "head final")
+allDataWriteMerged2$conditionHeadN <- relevel(allDataWriteMerged2$conditionHeadN, "noun initial", "noun final")
 allDataWriteMerged2$conditionCE <- relevel(allDataWriteMerged2$conditionCE, "crossed")
 allDataWriteMerged2$conditionCE <- relevel(allDataWriteMerged2$conditionCE, "center-embedding")
 ```
@@ -260,7 +264,7 @@ p<- ggplot( allDataWriteMerged2[allDataWriteMerged2$level != 1,], aes(x = worker
   facet_grid(conditionCE ~ conditionHeadN)+
   geom_bin2d()+
   scale_y_discrete(labels = c(rep("", 3), "2 seen", rep("", 5),"2 new", rep("", 5),"3 seen", rep("", 5),"3 new", rep("", 7),"4 new", rep("", 6)))+
-  labs(fill = "Syntax Type", shape = "Head Order")+
+  labs(fill = "Syntax Type", shape = "Head Noun Order")+
   scale_fill_manual(labels = c("Center-embedded", "Center-embedded/Crossed","Crossed", "Branching", "Uninterpretable"),  values =  hue_pal()(5)) +
     geom_hline(yintercept=8.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen: 2 seen
     geom_hline(yintercept=12.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 2 new
