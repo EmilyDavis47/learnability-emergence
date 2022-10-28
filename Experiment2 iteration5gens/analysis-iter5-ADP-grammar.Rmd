@@ -15,7 +15,7 @@ library(lmerTest)
 ## Import grammar file
  "grammars" contains interpretations of every array in every grammar. 
 ```{r}
-setwd('/Users/emilydavis/Desktop/paper data/Experiment2 iteration5gens')
+setwd('/Users/emilydavis/Downloads/paper data/Experiment2 iteration5gens')
 allGrammars  <- read.csv(paste0(getwd(), '/writeInsIterNewGrammar.csv'))
 listAllWriteIns <- read.csv(paste0(getwd(), '/writeInsIterNew.csv'))
 allGrammars <- arrange(allGrammars, workerId, time)
@@ -230,7 +230,7 @@ p<- ggplot( listAllWriteIns[listAllWriteIns$level != 1,], aes(x = gen, y = as.fa
   geom_bin2d()+
   xlab("generation")+  
   scale_y_discrete(labels = c(rep("", 3), "2 seen", rep("", 5),"2 new", rep("", 5),"3 seen", rep("", 5),"3 new", rep("", 7),"4 new", rep("", 6)))+
-  labs(fill = "Syntax Type", shape = "Head Order")+
+  labs(fill = "Syntax Type", shape = "Head Noun Order")+
   scale_fill_manual(labels = c("Center-embedded", "Center-embedded/Crossed", "Crossed", "Branching", "Uninterpretable"),  values = scales::hue_pal()(5), na.translate = F ) +
   geom_point(aes(shape = featureHead1, color = featureHead1), size = 1)+
   scale_shape_manual(labels = c("Final", "Indeterminate", "Initial", ""),  values =c(4, NA, 1, NA)) +
