@@ -28,7 +28,14 @@ for (c in colnames(allGrammars)) {
 }
 #grammars <- select(allGrammars, grammarcols)
 grammars <-allGrammars[,15:78]
+
+listAllWriteIns$gen <- as.factor(listAllWriteIns$gen)
+listAllWriteIns <- arrange(listAllWriteIns, workerId, time)
+listAllWriteIns <- cbind(listAllWriteIns, item = rep(1:40))
+
 ```
+
+
 
 ## Best fit grammars for each string 
 
@@ -146,13 +153,6 @@ for (i in 1:nrow(listAllWriteIns)) {
 listAllWriteIns <- cbind(listAllWriteIns, featureType1, featureHead1)
 ```
 
-```{r}
-listAllWriteIns$gen <- as.factor(listAllWriteIns$gen)
-listAllWriteIns <- arrange(listAllWriteIns, workerId, time)
-listAllWriteIns <- cbind(listAllWriteIns, item = rep(1:40))
-
-```
-
 
 ## Entropy 
 entropy of grammar distribution: graph and analyze
@@ -263,4 +263,33 @@ for (i in 1:length(allModels)) {
 allModels[[i]][,ncol(allModels[[i]])][allModels[[i]][,ncol(allModels[[i]])] == 0] <- "< .001"
 }
 tab_dfs(allModels, titles = c("Entropy"), file = paste0(getwd(),'tables-gram.html'))
+```
+
+
+# Visualization of iteration process 
+
+```{r}
+listAllWriteIns$seen <- as.factor(listAllWriteIns$seen)
+listAllWriteIns$seen <- relevel(listAllWriteIns$seen, "false")
+listAllWriteIns$seen<- relevel(listAllWriteIns$seen, "true")
+listAllWriteIns$seen[listAllWriteIns$gen== 0 & listAllWriteIns$seen == "false"]
+listAllWriteIns13<- listAllWriteIns[as.integer(listAllWriteIns$gen) <= 4,]
+p<- ggplot( listAllWriteIns13[listAllWriteIns13$chain == "A",], 
+            aes(x = chain, y = as.factor(item), fill = gen, alpha = seen)) +
+  facet_wrap(~gen, ncol = 4)+
+  xlab("generation")+
+    scale_x_discrete(labels = "")+
+   ylab("item")+
+  geom_bin2d()+
+  scale_fill_manual(values = scales::hue_pal()(20)[c(6:20)], na.translate = F )+
+    scale_alpha_manual(labels = c("seen", "novel", ""),  values = c(1, .5, 0), na.translate = F, guide =  "none")+
+    geom_hline(yintercept=4.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen: 1 seen
+    geom_hline(yintercept=12.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 2 seen
+    geom_hline(yintercept=16.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 2 new
+  geom_hline(yintercept=24.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 3 seen
+  geom_hline(yintercept=28.5, size = .3, alpha = .6)+ #blocking off levels and seen/unseen 3 new/4 new
+  theme_bw()+
+  scale_y_discrete(labels = c(rep("", 4), "1 seen",rep("", 3), "2 seen", rep("", 5),"2 new", rep("", 5),"3 seen", rep("", 5),"3 new", rep("", 7),"4 new", rep("", 6)))+ theme(panel.spacing = unit(6, "lines"))
+print(p)
+ ggsave(paste0( getwd(), "/gens.png"), p, width=12, height=6)
 ```

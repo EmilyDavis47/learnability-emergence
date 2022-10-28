@@ -429,6 +429,7 @@ anonymized.</p>
 <pre class="r"><code>setwd(&quot;/Users/emilydavis/Downloads/paper data/Experiment1Learnability&quot;)
 dataAnon &lt;- read.csv(paste0(getwd(), &#39;/allDataAnon.csv&#39;))
 prepList &lt;- read.csv(paste0(getwd(), &#39;/prepList.csv&#39;))
+#correct condition names so they show up correctly on all graphs
 dataAnon$conditionCE[dataAnon$conditionCE == &quot;no center-embedding&quot;] &lt;- &quot;branching&quot;
 dataAnon$conditionHeadN[dataAnon$conditionHeadN == &quot;head initial&quot;] &lt;- &quot;noun initial&quot;
 dataAnon$conditionHeadN[dataAnon$conditionHeadN == &quot;head final&quot;] &lt;- &quot;noun final&quot;
@@ -626,6 +627,53 @@ writeLmerNormed &lt;- lmer(correctness ~ as.numeric(level-1)* conditionCE * cond
 allDataWriteMerged1$level &lt;- as.factor(allDataWriteMerged1$level)
 contrasts(allDataWriteMerged1$level) &lt;- contr.sdif(4)
 writeLmerNormed2 &lt;- lmer(correctness ~ level* conditionCE * conditionHeadN + (1 +level|workerId), data = allDataWriteMerged1)</code></pre>
+<p>Level 4 alone</p>
+<pre class="r"><code>allDataWriteMerged4 &lt;- allDataWriteMerged[allDataWriteMerged$level == 4,]
+allDataWriteMerged4$level &lt;- as.factor(allDataWriteMerged4$level)
+writeLmerNormed4 &lt;- lmer(correctness ~ conditionCE * conditionHeadN + (1|workerId), data = allDataWriteMerged4)
+summary(writeLmerNormed4)</code></pre>
+<pre><code>## Linear mixed model fit by REML. t-tests use Satterthwaite&#39;s method [
+## lmerModLmerTest]
+## Formula: correctness ~ conditionCE * conditionHeadN + (1 | workerId)
+##    Data: allDataWriteMerged4
+## 
+## REML criterion at convergence: -785.1
+## 
+## Scaled residuals: 
+##     Min      1Q  Median      3Q     Max 
+## -4.8538 -0.4714  0.0679  0.4768  3.1288 
+## 
+## Random effects:
+##  Groups   Name        Variance Std.Dev.
+##  workerId (Intercept) 0.04143  0.2035  
+##  Residual             0.02586  0.1608  
+## Number of obs: 1440, groups:  workerId, 120
+## 
+## Fixed effects:
+##                                Estimate Std. Error         df t value Pr(&gt;|t|)
+## (Intercept)                    0.776587   0.019058 113.999990  40.749  &lt; 2e-16
+## conditionCE1                  -0.006994   0.023341 113.999990  -0.300 0.764994
+## conditionCE2                  -0.017312   0.013476 113.999989  -1.285 0.201532
+## conditionHeadN1               -0.072024   0.019058 113.999990  -3.779 0.000252
+## conditionCE1:conditionHeadN1  -0.049554   0.023341 113.999990  -2.123 0.035916
+## conditionCE2:conditionHeadN1  -0.000744   0.013476 113.999989  -0.055 0.956066
+##                                 
+## (Intercept)                  ***
+## conditionCE1                    
+## conditionCE2                    
+## conditionHeadN1              ***
+## conditionCE1:conditionHeadN1 *  
+## conditionCE2:conditionHeadN1    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Correlation of Fixed Effects:
+##             (Intr) cndCE1 cndCE2 cndHN1 cCE1:H
+## conditinCE1 0.000                             
+## conditinCE2 0.000  0.000                      
+## conditnHdN1 0.000  0.000  0.000               
+## cndtCE1:HN1 0.000  0.000  0.000  0.000        
+## cndtCE2:HN1 0.000  0.000  0.000  0.000  0.000</code></pre>
 <p>Seen vs. unseen:</p>
 <pre class="r"><code>adwM23 &lt;- allDataWriteMerged[allDataWriteMerged$level %in% c(2,3),]
 contrasts(adwM23$conditionCE) &lt;- contr.helmert(3)

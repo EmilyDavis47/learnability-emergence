@@ -75,6 +75,7 @@ Import task data and demographic files, which have been anonymized.
 setwd("/Users/emilydavis/Downloads/paper data/Experiment1Learnability")
 dataAnon <- read.csv(paste0(getwd(), '/allDataAnon.csv'))
 prepList <- read.csv(paste0(getwd(), '/prepList.csv'))
+#correct condition names so they show up correctly on all graphs
 dataAnon$conditionCE[dataAnon$conditionCE == "no center-embedding"] <- "branching"
 dataAnon$conditionHeadN[dataAnon$conditionHeadN == "head initial"] <- "noun initial"
 dataAnon$conditionHeadN[dataAnon$conditionHeadN == "head final"] <- "noun final"
@@ -138,6 +139,7 @@ testLmerInteract2 <- glmer(correct ~ level* conditionCE * conditionHeadN + (1 +l
 contrasts(allDataTestingMerged$conditionCE)
 library(sjPlot)
 ```
+
 
 
 ## Production accuracy
@@ -290,6 +292,15 @@ allDataWriteMerged1 <- allDataWriteMerged
 allDataWriteMerged1$level <- as.factor(allDataWriteMerged1$level)
 contrasts(allDataWriteMerged1$level) <- contr.sdif(4)
 writeLmerNormed2 <- lmer(correctness ~ level* conditionCE * conditionHeadN + (1 +level|workerId), data = allDataWriteMerged1)
+```
+
+Level 4 alone
+```{r}
+
+allDataWriteMerged4 <- allDataWriteMerged[allDataWriteMerged$level == 4,]
+allDataWriteMerged4$level <- as.factor(allDataWriteMerged4$level)
+writeLmerNormed4 <- lmer(correctness ~ conditionCE * conditionHeadN + (1|workerId), data = allDataWriteMerged4)
+summary(writeLmerNormed4)
 ```
 
 Seen vs. unseen: 
