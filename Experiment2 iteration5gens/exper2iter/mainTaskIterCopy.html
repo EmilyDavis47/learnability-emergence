@@ -1,0 +1,973 @@
+<html>
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title></title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script> 
+</head>
+<body>
+<style type="text/css">p, div, span, #ans {
+
+font-size: 25px;}
+
+  .button1 {
+    display:inline-block;
+    font-size:150%;
+  text-align: center;
+    padding-left: 2px;
+    padding-right: 2px;
+  border: 2px outset gray;
+  background: white;
+  cursor: pointer;
+  }
+#count, #countTest {
+
+font-size: 20px;}
+#test, #nextb, #entry, #testIntro, #writeIntro{
+display: none
+}
+#train2 {borders: 50px}
+.pics1 {display: flex
+
+}
+
+.grid-container {
+
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+}
+.im:hover{
+ background:#00ffff;
+}
+.grid-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.buttonplain {
+  text-align: center;
+  border: 2px outset gray;
+  background: white;
+  padding: 3px;
+  margin: 0 auto;
+  cursor: pointer;
+  }
+</style>
+<center>
+<div id="viewIntro">You will now see a series of alien objects, or collections of these objects,<br />
+with captions in the alien language.<br />
+Do your best to remember the meanings.<br />
+&nbsp;</div>
+
+<div id="begin"><span class="buttonplain" onclick="startLevel()">Click Here To Start</span></div>
+
+<div class="buttonplain" id="nextb" onclick="startLevel()">Next</div>
+
+<p id="debug"></p>
+
+<div id="train">
+<p id="count"></p>
+
+<p id="trainlabel"></p>
+&nbsp;
+
+<table>
+  <tbody>
+    <tr>
+    </tr>
+    <tr id="train2">
+    </tr>
+  </tbody>
+</table>
+
+<p id="inner"></p>
+</div>
+
+<div id="testIntro">Now that you have learned the names for some objects, you will be tested on your comprehension. <!-- br--></div>
+
+<div id="writeIntro">You have completed your training. Now you will be asked to label items in the alien language. You will be given a list of the alien words, which you can click on to enter something into the box. Once you have entered enough words you will automatically be advanced to the next item on the list. <!-- br--></div>
+
+<div id="test">
+<p id="countTest"></p>
+
+<p id="question"></p>
+
+<div id="resp"></div>
+
+<div id="lvl"></div>
+
+<div class="grid-container">
+<div class="grid-item">
+<table class="im">
+  <tbody>
+    <tr class="pics1" onclick="check(this.id)">
+    </tr>
+  </tbody>
+</table>
+
+<p class="ht"></p>
+</div>
+
+<div class="grid-item">
+<table class="im">
+  <tbody>
+    <tr class="pics1" onclick="check(this.id)">
+    </tr>
+  </tbody>
+</table>
+
+<p class="ht"></p>
+</div>
+
+<div class="grid-item">
+<table class="im">
+  <tbody>
+    <tr class="pics1" onclick="check(this.id)">
+    </tr>
+  </tbody>
+</table>
+
+<p class="ht"></p>
+</div>
+
+<div class="grid-item">
+<table class="im">
+  <tbody>
+    <tr class="pics1" onclick="check(this.id)">
+    </tr>
+  </tbody>
+</table>
+
+<p class="ht"></p>
+</div>
+</div>
+</div>
+
+<div class="grid-item" id="entry">
+<p id="countWrite"></p>
+
+<table>
+  <tbody>
+    <tr id="whatis">
+    </tr>
+  </tbody>
+</table><textarea cols="100" id="ans"  rows="1" readonly = "readonly"></textarea><br>
+<table id ="iconbuttons"><tr>
+<td> <span class="button1" onclick="add(this.innerHTML)"></span></td>
+<td> <span class="button1" onclick="add(this.innerHTML)"></span></td>
+<td> <span class="button1" onclick="add(this.innerHTML)"></span></td>
+<td> <span class="button1" onclick="add(this.innerHTML)"></span></td>
+<td> <span class="button1" onclick="add(this.innerHTML)">moy</span></td>
+<td> <span class="button1" onclick="add(this.innerHTML)">rae</span></td>
+</tr></table>
+</div>
+
+<div id="resp2"></div>
+<!-- <div id = "another"> <span class="buttonplain" onclick="start()">Do another</span></div> -->
+
+<div id="done"></div>
+</center>
+<script>
+var prepHoriz = "moy";
+var prepVert = "rae";
+var items = [['','2002'], ['','2022'], ['','2050'], ['','2064']]; 
+var itemsViewed = 0; //how many items seen in passive
+var trialsDone = 0; //how many selection trials done in active
+var score = 0;
+var testsTotal = 0;
+var level = 0; //make sure set to 0 for actual task 
+var itemsPerLevel = [4,8,8,8]; //[4,8,8,8]; number viewed
+var trialsPerLevel = [4,8,8,8];//[4,8,8,8]; number in comp test
+var levelsTotal = 3; 
+var levelsTotalWrite = 4; 
+var itemsEntered = 0; //make sure set to 0 for actual task; 40 total 
+var randNamesTen = [["kilkul","vanva","tovo","sunsin"],
+["kuka","tultol","vinkin","solsil"],
+["sulsal","tinkin","kakan","volsol"],
+["vusu","tinkin","solson","kolkil"],
+["tuntul","vinkin","sosi","kanka"],
+["toltul","vivin","sasan","koto"],
+["soko","vilval","tulkul","kinsin"],
+["sisu","vinvi","konkan","tulsul"],
+["titil","vuntun","silvil","kaku"],
+["valtal","kolkul","siso","tontin"]];
+var allUserWriteIns = []; 
+var stage = "training"; //can be training, testing, or write-in
+var url = "";
+var assignId = "TEST";
+var hitId = "TEST";
+var workerId = "NOTAREALWORKERID";
+
+
+ans.addEventListener("keyup", function(event) {
+  // Number 13 is the "Enter" key on the keyboard
+  if (event.keyCode === 13) {
+    // Trigger the button element with a click
+    document.getElementById("entr").click();
+  }
+});
+var itemsSeenTraining = [];
+var itemsSeenTesting = []; 
+var chains = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+function writeData(data) {
+  var dataToRecord = $.extend({'workerId':workerId,
+    'assignmentId':assignId,
+    'hitId':hitId,
+    //'condition':condition,
+    'chain':chain,
+    'generation':gen,
+'level':level},data)
+    $.ajax({
+      type: 'POST',
+      url: 'https://www.edavis.ppls.ed.ac.uk/emilySaveData.php',//url of receiver file on server
+      data:dataToRecord,
+      cache:false
+});
+
+}
+var diversity = [0,0,0,0]; 
+
+
+function shuffleArray(a) {
+    var j, x, i;
+    for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    return a;
+}
+
+Array.prototype.shuffle = function() {
+    var i = this.length;
+    if (i == 0) return this;
+    while (--i) {
+        var j = Math.floor(Math.random() * (i + 1 ));
+        var a = this[i];
+        var b = this[j];
+        this[i] = b;
+        this[j] = a;
+    }
+    return this;
+};
+
+
+const flatten = function(arr, result = []) {
+  for (let i = 0, length = arr.length; i < length; i++) {
+    const value = arr[i];
+    if (Array.isArray(value)) {
+      flatten(value, result);
+    } else {
+      result.push(value);
+    }
+  }
+  return result;
+};
+
+function arraysEqual(_arr1, _arr2) {
+  //special case for rebracketed linear arrays 
+  if ((arrayToCaption1(_arr1).split(prepVert).length == 1 && arrayToCaption1(_arr2).split(prepVert).length == 1) || (arrayToCaption1(_arr1).split(prepHoriz).length == 1 && arrayToCaption1(_arr2).split(prepHoriz).length == 1)){ //horizontal or vertical
+    _arr1 = flatten(_arr1);
+    _arr2 = flatten(_arr2);
+  }
+return JSON.stringify(_arr1) == JSON.stringify(_arr2);
+}
+//rule out duplicates 
+function arrayContains(ar, item) {
+for (i = 0; i < ar.length; i++) {
+if (ar[i]=== item || arraysEqual(ar[i], item)) {
+return true;
+}
+}
+return false;
+}
+
+function arrayToCaption1(x) { //for testing captions, NP [P NP] order
+caption = ''
+if (typeof(x) == "number") {
+caption = items[x][0]; 
+} else if (typeof(x) != "number" && x.length ==1) { //[0,[1]]
+caption = arrayToCaption1(x[0]); 
+} else if (typeof(x) != "number" && x.length ==2) { 
+  if (typeof(x[1]) == "number" ||x[1].length >1) {//[0,[1,2]]; [0,1]
+  caption = arrayToCaption1(x[0]) + " "+prepHoriz + " " + arrayToCaption1(x[1]);
+  } else {
+  caption = arrayToCaption1(x[0]) + " "+prepVert + " " + arrayToCaption1(x[1]);
+  }
+}
+  return caption;  
+}
+
+function arrayToCaption(x) {
+  return arrayToCaption1(x).split(' ').shuffle().join(' ');
+}
+
+
+function arrayToPic(x, sizeH, sizeV, z, lower) {
+pics = ''
+if (typeof(x) == "number") {
+ pics =  '<img src="https://www.edavis.ppls.ed.ac.uk/images/'+items[x][1]+'-600.png"style="width:'+sizeH+'px;height:'+sizeV+'px; margin-bottom:-'+lower+'px; margin-top:-'+Math.floor(sizeV/10)+'px;margin-left:-'+Math.floor(sizeH/10)+'px;margin-right:-'+Math.floor(sizeH/10)+'px;position: relative; z-index: '+z+';">';
+} else if (typeof(x) != "number" && x.length ==1) { //array of one
+  pics = arrayToPic(x[0], sizeH, sizeV, z, lower); 
+} else { //larger array
+  //special case of "Flat" array 
+  if (arrayToCaption1(x).split(prepVert).length == 1){ //horizontal 
+    x = flatten(x);
+    for (j = 0; j < x.length; j++) {
+      pics += '<td valign ="bottom" align = "center">'+arrayToPic(x[j], Math.floor(sizeH/x.length), Math.floor(sizeV/x.length), z, lower) +'</td>'
+    }
+  } else if (arrayToCaption1(x).split(prepHoriz).length == 1){ //vertical
+    x = flatten(x);
+    pics = '<td valign ="bottom" align = "center">' 
+    for (j = 0; j < x.length; j++) {
+      pics +=  '<table><tr>' + arrayToPic(x[j], Math.floor(sizeH/x.length), Math.floor(sizeV/x.length), z-j, Math.floor(sizeV/20)) + '</tr>';
+    }
+    pics += "</td></tr></table></td>";
+  } else {
+  if (typeof(x[1]) == "number" ||x[1].length >1) {//[0,[1,2]]; [0,1] 
+  pics = '<td valign ="bottom" align = "center"><table><tr><td valign ="bottom" align = "center"> '+arrayToPic(x[0], sizeH, sizeV, z, lower) +'</td><td valign ="bottom" align = "center">'+ arrayToPic(x[1], sizeH, sizeV, z, lower)+ '</td></tr></table></td>';
+  } else {//stacked array
+  topSize = arrayToCaption1(x[0]).split(prepHoriz).length;
+   pics = '<td valign ="bottom" align = "center"> <table><tr>' + arrayToPic(x[0], sizeH, sizeV, z+1, Math.floor(sizeV/20)) + '</tr><tr><td valign ="bottom" align = "center" colspan = "'+topSize+'">' + arrayToPic(x[1], sizeH, sizeV, z-1, 0) + "</td></tr></table></td>";
+  }
+  }
+}
+  return pics;  
+}
+
+function arrayToPicSize(x, sizeH, sizeV, z, lower) {
+    //need this for testing aspects of caption
+  if (arrayToCaption1(x).split(prepVert).length == 1  || arrayToCaption1(x).split(prepHoriz).length == 1 ) { //horizontal or vertical
+return arrayToPic(x, sizeH, sizeV, z, lower)
+  } else {
+    return arrayToPic(x, Math.floor(sizeH/2), Math.floor(sizeV/2), z, lower)
+  }
+}
+listAllIndividual = [];
+listAllCounters = [[[0,1,3,2],[1,2,0,3],[2,1,0,3],[3,0,2,1]],
+[[[1,3],[0,3],[1,[3]],[0,[3]]],[[1,[1]],[3,[1]],[1,1],[1,3]],[[2,3],[2,1],[3,[2]],[2,[1]]],
+[[0,2],[3,0],[2,[0]],[3,[0]]],[[1,2],[1,3],[1,[2]],[1,[3]]],[[1,[3]],[3,[2]],[3,1],[3,2]],[[2,[0]],
+[0,[1]],[2,0],[1,0]],[[3,[2]],[3,[3]],[2,3],[3,3]],[[2,0],[2,1],[0,[2]],[1,[2]]],[[0,1],[3,2],[0,[1]],
+[2,[3]]],[[2,[2]],[0,[2]],[2,2],[2,0]],[[2,2],[1,1],[2,[2]],[1,[1]]]],[[[[1,[2]],0],[[1,[1]],1],[2,[1,[0]]],
+[1,[1,[1]]]],[[[3,[2]],1],[[1,[3]],3],[3,[[2,[1]]]],[3,[[3,[1]]]]],[[0,[[1,[3]]]],[3,[[3,[0]]]],[3,[0,1]],
+[3,[0,3]]],[[[1,3],2],[[0,1],2],[[2,1],[3]],[[1,0],[2]]],[[1,[[0,[2]]]],[2,[[0,[0]]]],[2,[1,[0]]],[2,[0,[0]]]],
+[[1,[3,[0]]],[3,[0,[0]]],[[1,0],3],[[0,0],3]],[[[0,[0]],1],[[2,[2]],3],[[0,[0]],[1]],[[2,[2]],[3]]],[[[1,1],[3]],
+[[1,2],[2]],[[1,[1]],[3]],[[2,[1]],[2]]],[[1,[2,[2]]],[2,[0,[1]]],[[1,2],2],[[0,1],2]],[[3,[[0,[0]]]],[3,[[3,[0]]]],
+[[0,0],[3]],[[0,3],[3]]],[[[3,[3]],[2]],[[0,[2]],[3]],[[3,2],[3]],[[2,0],[3]]],[[1,[3,3]],[3,[2,1]],[[1,[3]],[3]],
+[[1,[2]],[3]]]],[[[0,[[[2,[1]],0]]],[2,[[[1,[1]],2]]],[[[0,0],[1]],2],[[[1,1],[2]],2]],[[2,[[2,[1,[3]]]]],[3,[[3,[2,[2]]]]],
+[[2,[2,[1]]],3],[[3,[2,[2]]],3]],[[0,[[0,1],[1]]],[2,[[2,2],[2]]],[1,[[0,0],1]],[2,[[2,2],2]]],[[3,[0,[[1,1]]]],[3,[2,[[1,0]]]],
+[[[1,0],[1]],3],[[[1,0],[2]],3]],[[0,[[3,[2]],[2]]],[3,[[1,[1]],[2]]],[[2,[[0,2]]],[3]],[[2,[[1,1]]],[3]]],
+[[[0,[1,2]],[3]],[[3,[0,3]],[3]],[[[0,[1]],[2]],3],[[[0,[3]],[3]],3]],[[[[2,[1]],[3]],[2]],
+[[[0,[1]],[3]],[3]],[3,[[[1,[2]],2]]],[3,[[[0,[1]],3]]]],[[3,[[3,[0,[3]]]]],[3,[[1,[0,[0]]]]],[[3,[3,[0]]],[3]],
+[[1,[0,[0]]],[3]]],[[[0,[2,[0]]],[1]],[[2,[2,[0]]],[2]],[[1,[[0,0]]],[2]],[[2,[[2,0]]],[2]]],[[1,[[[0,1],[3]]]],
+[3,[[[0,0],[0]]]],[3,[1,[0,1]]],[3,[0,[0,0]]]],[[[[1,3],1],1],[[[3,1],3],3],
+[3,[[[1,[1]],1]]],[3,[[[3,[1]],3]]]],[[[[1,1],2],1],[[[2,1],3],3],[[1,[1,[1]]],[2]],[[3,[2,[1]]],[3]]]]];
+
+for (i = 0; i < listAllCounters.length; i ++) {
+  for (j = 0; j < listAllCounters[i].length; j++) {
+    listAllIndividual.push(listAllCounters[i][j][0])
+  }
+}
+//get first element of each quartet
+
+function captionsByLevel(listAllCaptions) {
+listAllCaptionsLevel = [[],[],[],[]];
+for (i = 0; i < listAllCaptions.length; i ++) {
+	if (listAllCaptions[i].split(' ').length == 1) { //one word
+listAllCaptionsLevel[0].push(listAllCaptions[i])
+	}
+	else if (listAllCaptions[i].split(' ').length == 3){ //3 words
+listAllCaptionsLevel[1].push(listAllCaptions[i])
+	}
+	else if (listAllCaptions[i].split(' ').length == 5){
+listAllCaptionsLevel[2].push(listAllCaptions[i])
+	} else {
+		listAllCaptionsLevel[3].push(listAllCaptions[i])
+	}
+}
+return listAllCaptionsLevel;
+}
+
+
+function itemsByLevel(listAllItems) {
+listAllLevel = [[],[],[],[]];
+for (i = 0; i < listAllItems.length; i ++) {
+	if (typeof(listAllItems[i]) == "number") { //one
+listAllLevel[0].push(listAllItems[i])
+	}
+	else if (flatten(listAllItems[i]).length == 2){ //2
+listAllLevel[1].push(listAllItems[i])
+	}
+	else if (flatten(listAllItems[i]).length == 3){
+listAllLevel[2].push(listAllItems[i])
+	} else {
+		listAllLevel[3].push(listAllItems[i])
+	}
+}
+return listAllLevel;
+}
+
+function sortForDuplicateLabels(allItems, allLabels) {
+ uniqueLabels = []; 
+uniqueItems = []; 
+dupLabels = [];
+dupItems = []; 
+removeFromTraining = []; 
+for (l = 0; l < allItems.length; l ++) {
+if (uniqueLabels.includes(allLabels[l])) { //already in unique
+	dupLabels.push(allLabels[l]);
+	dupItems.push(allItems[l]);
+	removeFromTraining.push[l]; 
+} else {
+	uniqueLabels.push(allLabels[l]);
+	uniqueItems.push(allItems[l]);
+}
+}
+return [uniqueLabels.concat(dupLabels), uniqueItems.concat(dupItems), removeFromTraining];
+//duplicate labels shoved to the end; if there aren't any, the list is returned intact
+}
+
+var iterParams = {}; 
+var chain = '';//initializing these 
+var gen = 0;
+var nameSet = 0;
+var randnames = [];
+var genInfo = ''; 
+var genAndStrings = []; 
+var ListAllCaptions = []; 
+var exists = 0; 
+$(document).ready(function() {
+  url = ''+window.location;
+  var params = url.split("?")[1].split("&");
+  for (var i=0; i<params.length; i++)
+  {
+    var name = params[i].split("=")[0];
+    var value = params[i].split("=")[1];
+  //  insert_hidden_into_form('mturkSubmitForm',name,value);
+    if (name=="assignmentId") {
+      assignId = value;
+    }
+    if (name=="hitId") {
+      hitId = value;
+    }
+    if (name=="workerId") {
+      workerId = value;
+    }
+    if (name=="debug") {  // values can be: nowait, which allows you to continue past instructions without minimum wait
+      debug = value;
+    }
+    if (name=="jump") { // values can be: ...
+      jump = parseInt(value);
+    }
+  }
+
+
+
+
+//determine where we are in this chain
+//if this is generation 0, make a file
+//first check table 
+$.ajax({
+    async: false,
+      type: 'POST',
+      url: 'https://www.edavis.ppls.ed.ac.uk/makeTable.php',//url of receiver file on server
+      data:{},//no data to send here
+      cache:false,
+     success: function(data) {
+         console.log(data);
+        if (data=='0') {
+            //if table is empty, fill in chains 
+     $.ajax({
+    async: false,
+      type: 'POST',
+      url: 'https://www.edavis.ppls.ed.ac.uk/updateSQLTable.php',//url of receiver file on server
+      data:{'chains':chains.join(';')},//send chain list so table can be made
+      cache:false,
+       success: function(data) {
+        console.log(data);}
+})
+}
+}
+})
+//now select a random chain from those available
+//use checkout chain to pick a random chain and gen
+$.ajax({ 
+    async: false,
+      type: 'POST',
+      url: 'https://www.edavis.ppls.ed.ac.uk/IterCheckoutChain.php',//url of receiver file on server
+      data:{'workerId':workerId},//apply chain/gen to worker ID (placeholder getting sent instead?)
+      cache:false,
+      success: function(data) {
+        if (data == 'null') {
+              document.getElementById("viewIntro").innerHTML = "Sorry, this HIT is currently unavailable. Please come back later."
+              document.getElementById("begin").style.display = "none";
+          } else {
+          iterParams = JSON.parse(data); 
+          console.log(iterParams);
+          chain = chain + iterParams.chain;
+          console.log(chain);
+          gen = iterParams.gen;
+          }
+
+      }
+})
+//REMOVED CODE HERE, REINSTATE AS NEEDED
+//If generation 0, pick random names and create random strings
+//call checkFileExists to see if theres' a file for this chain
+//make file and gen 0 data only if there is not
+     $.ajax({  
+    async: false,
+     type: 'POST',
+                  url: 'https://www.edavis.ppls.ed.ac.uk/checkFileExists.php',//url of receiver file on server
+                  data:{
+                'chain': chain
+                  },success: function(data) {console.log(data);
+                  exists = Number(exists) + Number(data); 
+                  console.log(exists);
+          }
+            });
+if (gen == 0 && exists != 1) {//no file
+    nameSet = Math.floor(Math.random() * 10);
+    randnames = randNamesTen[nameSet];
+    for (k = 0; k < items.length; k++) {
+         items[k][0] = randnames[k]; 
+    }  
+    
+    var listAllCaptions1 = []; //this is the random set for gen 0
+    for (i = 0; i < listAllIndividual.length; i ++) {
+      listAllCaptions1.push(arrayToCaption(listAllIndividual[i]));
+    }
+     listAllCaptions = listAllCaptions1; //original captions
+     listAllCaptionsLevel = captionsByLevel(listAllCaptions1);
+     listAllIndivLevel = itemsByLevel(listAllIndividual)
+     for (i = 0; i < listAllCaptionsLevel.length; i++) {
+         dupInfo = sortForDuplicateLabels(listAllIndivLevel[i], listAllCaptionsLevel[i]);
+         listAllIndivLevel[i] = dupInfo[1];
+         listAllCaptionsLevel[i] = dupInfo[0];
+         for (k = 0; k < dupInfo[2].length; k ++) {
+             listAllCounters[i].splice(k, 1);
+         }
+     }
+     listAllCaptions = flatten(listAllCaptionsLevel); //duplicates shoved to end of each level, so they won't be in training
+     //fill in data for generation 0 in a file for this chain
+     console.log(chain);
+     $.ajax({  
+    async: false,
+     type: 'POST',
+                  url: 'https://www.edavis.ppls.ed.ac.uk/IterFillInFile.php',//url of receiver file on server
+                  data:{
+                'workerId': workerId,
+                'chain': chain,
+                'generation': gen,
+                'strings': JSON.stringify(listAllCaptions).replace(/,/g, ";").replace(/\[|\]|\"/g,''),
+                'nouns': nameSet
+                  },success: function(data) {console.log(data);
+          }
+            });
+        }
+        else {
+            //retrieve applicable chain if available: update this code as needed! 
+            $.ajax({
+                async: false, 
+              type: 'POST',
+              url: 'https://www.edavis.ppls.ed.ac.uk/iterateGetData.php',//url of receiver file on server
+              data:{'chain':chain },
+      success: function(data) {
+        genInfo = genInfo+ $.parseJSON(data);
+        genAndStrings = genAndStrings.concat(genInfo.split("#")); //gen, nouns, then strings
+        gen = Number(genAndStrings[0]);
+        nameSet = Number(genAndStrings[1]);
+        randnames = randNamesTen[nameSet];
+        listAllCaptions = genAndStrings[2].split(";");
+     listAllCaptionsLevel = captionsByLevel(listAllCaptions);
+     listAllIndivLevel = itemsByLevel(listAllIndividual)
+     for (i = 0; i < listAllCaptionsLevel.length; i++) {
+         dupInfo = sortForDuplicateLabels(listAllIndivLevel[i], listAllCaptionsLevel[i]);
+         listAllIndivLevel[i] = dupInfo[1];
+         listAllCaptionsLevel[i] = dupInfo[0];
+         for (k = 0; k < dupInfo[2].length; k ++) {
+             listAllCounters[i].splice(k, 1);
+         }
+     }
+     listAllCaptions = flatten(listAllCaptionsLevel); //duplicates shoved to end of each 
+        
+for (k = 0; k < items.length; k++) {
+     items[k][0] = randnames[k]; 
+}
+}
+
+});
+            
+ }
+ buttonNames = randnames.concat(["rae", "moy"]);
+bts = document.getElementsByClassName("button1");
+var buttonNames2 = shuffleArray(buttonNames);
+for (b = 0; b < 6; b ++) {
+  bts[b].innerHTML = buttonNames2[b];
+}
+})
+//all this is done when the page loads
+        
+
+
+var images = document.getElementsByClassName("pics1");
+var enteredSymbols = 0; //count words entered into box
+
+function displayItem() {
+on = itemsViewed+1;
+document.getElementById("count").innerHTML =
+on + " of " + itemsPerLevel[level];
+document.getElementById("begin").style.display = "none";
+size = 100* (4- level/2);
+document.getElementById("train2").innerHTML = arrayToPicSize(listAllCounters[level][itemsViewed][0], size, size, -1, 0);
+//show first item in each list of 4
+document.getElementById("trainlabel").innerHTML = listAllCaptionsLevel[level][itemsViewed];
+document.getElementById("train").style.display = "block";
+document.getElementById("nextb").style.display = "block";
+document.getElementById("test").style.display = "none";
+itemsSeenTraining.push(listAllCounters[level][itemsViewed][0]);
+var trialDataToRecord = {'trialType':stage, 'nameTraining':listAllCaptionsLevel[level][itemsViewed], 'arrayTraining': JSON.stringify(listAllCounters[level][itemsViewed][0])};
+writeData(trialDataToRecord);
+itemsViewed++;
+}
+
+
+function displayTest(){
+document.getElementById("testIntro").style.display = "none";
+on = trialsDone+1;
+document.getElementById("countTest").innerHTML =
+on + " of " + trialsPerLevel[level] + "; " + score + " out of "+ on + " correct";
+on = trialsDone+1;
+document.getElementById("count").innerHTML =
+on + " of " + trialsPerLevel[level];
+document.getElementById("nextb").style.display = "none";
+document.getElementById("resp").innerHTML = " <br> <br>"; 
+testword = bigListAll[trialsDone][0] // first array will be correct answer
+itemsSeenTesting.push(testword);
+s = shuffleArray(bigListAll[trialsDone]); //array for questions
+document.getElementById("train").style.display = "none";
+for (i = 0; i < images.length; i ++) {
+    images[i].innerHTML = arrayToPicSize(s[i],  200, 200, 3, 0);
+    images[i].id = JSON.stringify(s[i]); //correct array
+    images[i].setAttribute("onclick", "check(this.id);");
+    }
+    document.getElementById("question").innerHTML = 'Select the <span id = "testword">'+listAllCaptionsLevel[level][trialsDone]+'</span>';
+    document.getElementById("test").style.display = "block"; 
+}
+
+function displayViewIntro(){
+document.getElementById("viewIntro").style.display = "block";
+}
+function displayTestIntro(){
+document.getElementById("train").style.display = "none";
+document.getElementById("testIntro").style.display = "block";
+if (level > 0) {
+    document.getElementById("testIntro").innerHTML = "Now that you have learned the names for some groups of objects, you will be tested on your comprehension.";
+}
+}
+
+function displayWriteIntro(){
+document.getElementById("test").style.display = "none";
+document.getElementById("writeIntro").style.display = "block";
+}
+
+
+function displayWrite() {
+document.getElementById("iconbuttons").style.display = "inline-block";
+document.getElementById("writeIntro").style.display = "none";
+on = itemsEntered+1;
+document.getElementById("countWrite").innerHTML =
+on + " of " + listAllIndividual.length;
+document.getElementById("resp2").innerHTML = " <br> <br>";
+document.getElementById("ans").value = ""; 
+item = listAllIndividual[itemsEntered];
+//chosing first item
+size = 100* (4- level/2);
+document.getElementById("whatis").innerHTML = arrayToPicSize(item, size, size, -1, 0);
+document.getElementById("entry").style.display = "block";
+document.getElementById("nextb").style.display = "none";
+enteredSymbols = 0;//reset to zero
+}
+
+function check(x) {//x is value of clicked item
+console.log(x);
+console.log(typeof(x));
+answer = testword;
+s2 = [];
+for (i = 0; i < s.length; i++) { //array of string matrixes
+    s2.push(JSON.stringify(s[i]));
+}
+var correct = s.indexOf(answer); 
+var clicked = s2.indexOf(x);
+var seenInTraining = arrayContains(itemsSeenTraining, testword);
+var trialDataToRecord = {'trialType':stage, 'nameTraining': listAllCaptionsLevel[level][trialsDone], 'arrayTraining': s2[correct], 
+'choiceArray0': s2[0], 'choiceArray1': s2[1], 'choiceArray2': s2[2], 'choiceArray3': s2[3],
+'correctChoiceNumber': correct, 'participantChoiceNumber': clicked, 'seenInTraining': seenInTraining };
+trialsDone++;
+if (x == JSON.stringify(answer)) {
+document.getElementById("resp").innerHTML = "<font color = 'green'>Good work</br></br></font>"; 
+score++;
+} else {
+document.getElementById("resp").innerHTML = "<font color = 'red'>Sorry, incorrect </br></br> </font>";
+}
+s = []; //rebuild image array
+for (i = 0; i < images.length; i ++) {
+if (images[i].id != JSON.stringify(answer)) {
+    images[i].innerHTML = images[i].innerHTML.replace(/2002|2022|2050|2064/g, "wh"); ; //blank out incorret answers
+    }
+s.push(images[i].id); 
+    }
+//document.getElementById("nextb").style.display = "block";
+document.getElementById(JSON.stringify(answer)).setAttribute("onclick", "");
+document.getElementById("countTest").innerHTML =
+on + " of " + trialsPerLevel[level] + "; " + score + " out of "+ on + " correct";
+//var inAmbig = arrayContains(list3Ambig,testword) || arrayContains(list3Ambig,testword);
+//'inAmbig': inAmbig
+writeData(trialDataToRecord);
+setTimeout(startLevel, 3000);
+} 
+
+
+//auto enter when enough words entered
+function add(x) {
+document.getElementById("ans").value += x + " ";
+enteredSymbols ++;   //count symbols entered
+checktext();
+}
+
+
+
+function checktext() {
+  if (enteredSymbols == arrayToCaption(listAllIndividual[itemsEntered]).split(' ').length) {
+answertext = document.getElementById("ans").value.replace(",", ";").replace(/(?:\r\n|\r|\n)/g, '').trim();//get rid of commas and newlines; eliminate whitespace imposed by keyboard
+answer = JSON.stringify(listAllIndividual[itemsEntered]);
+var seenInTraining = arrayContains(itemsSeenTraining, listAllIndividual[itemsEntered]);
+var seenInTesting = arrayContains(itemsSeenTesting, listAllIndividual[itemsEntered]);
+//var inAmbig = arrayContains(list3Ambig, listAllIndividual[itemsEntered]) || arrayContains(list3Ambig, listAllIndividual[itemsEntered]);
+var arrayLength = flatten(listAllIndividual[itemsEntered]).length; 
+if (arrayLength == 0) { 
+    var writeLevel = 0
+    
+} else {
+    var writeLevel = arrayLength-1; 
+}
+ var trialDataToRecord = {'trialType':stage, 'arrayTraining': answer,
+ 'participantText':answertext, 'compositionalAnswer':listAllCaptions[itemsEntered], 
+ 'seenInTraining': seenInTraining, 'seenInTesting': seenInTesting, 'level':writeLevel};
+ //what the correct answer would be in compositional language
+writeData(trialDataToRecord);
+allUserWriteIns.push(answertext);
+itemsEntered++; 
+document.getElementById("iconbuttons").style.display = "none";
+setTimeout(startLevel, 2000);
+}
+} 
+function checkDiversity(v) {
+  return v >= 8; //set value to 8 in real task; this is for levels afte the first
+}
+function startLevel() {
+  //document.getElementById("debug").innerHTML = JSON.stringify(listAllIndividual);
+if (level < levelsTotal) {
+document.getElementById("nextb").innerHTML = "Next";
+  if (stage == "training") { //initial stage
+    if (itemsViewed < itemsPerLevel[level]) {
+    displayItem();
+document.getElementById("viewIntro").style.display = "none";
+    }else { //go to testing
+    stage = "testing"; 
+    itemsViewed = 0; //reset
+    bigListAll = listAllCounters[level].slice(0,8); //take only first eight (shuffle in actual task)
+    displayTestIntro();
+      }
+  } else if (stage == "testing") { //if in testing stage
+  if (trialsDone < trialsPerLevel[level]) {
+    clearTimeout(startLevel, 3000); //make sure timeout isn't ongoing
+  displayTest();
+
+  } else {
+    document.getElementById("test").style.display = "none";
+    document.getElementById("nextb").innerHTML = "You have completed this level. <br> Now things will get more complex. <br> Click here to advance";
+    //hide testing, resume training
+    level++;
+    trialsDone = 0; 
+    score = 0; 
+    stage = "training"; 
+document.getElementById("nextb").style.display = "block";
+}
+}
+} else {
+if (itemsEntered < listAllIndividual.length) {//if write stage remains to be done; < listAllIndividual.length
+if (stage != "write") {
+stage = "write"; 
+document.getElementById("nextb").innerHTML = "Next";
+displayWriteIntro(); 
+} else {
+displayWrite(); 
+}
+} else { 
+    stage = "finished"; 
+  
+  //Done
+  //send in iteration data
+writeInsLevel =  captionsByLevel(allUserWriteIns); 
+for (l = 0; l < writeInsLevel.length;l ++ ) {
+diversity[l] = [... new Set(writeInsLevel[l])].length;
+}
+
+if (diversity[0] == 4 && diversity.slice(1,4).every(checkDiversity)) { //set this appropriately by level in actual task: 4 for first, 8 each after
+$.ajax({ 
+type: 'POST',
+              url: 'https://www.edavis.ppls.ed.ac.uk/updateChain.php',//url of receiver file on server
+              data:{
+            'stat': 'Finished',
+            'workerId':workerId,
+            'chain':chain,
+            'gen': Number(gen)
+              },
+              cache:false,
+               success: function(data) {console.log(data)}
+        });
+$.ajax({ 
+type: 'POST',
+              url: 'https://www.edavis.ppls.ed.ac.uk/IterFillInFile.php',//url of receiver file on server
+              data:{
+            'workerId':workerId,
+            'chain':chain,
+            'generation': Number(gen)+1, 
+            'strings': JSON.stringify(allUserWriteIns).replace(/,/g, ";").replace(/\[|\]|\"/g,''),
+            'nouns': nameSet
+              },
+              cache:false
+        });
+} else {
+     $.ajax({ 
+type: 'POST',
+              url: 'https://www.edavis.ppls.ed.ac.uk/updateChain.php',//url of receiver file on server
+              data:{
+            'stat': 'Available',
+            'workerId':workerId,
+            'chain':chain,
+            'gen': Number(gen)
+              },
+              cache:false,
+               success: function(data) {console.log(data)}
+        });
+}
+
+
+document.getElementById("test").style.display = "none";
+document.getElementById("nextb").style.display = "none";
+document.getElementById("entry").style.display = "none";
+document.getElementById("resp").style.display = "none";
+document.getElementById("lvl").style.display = "none";
+document.getElementById("done").innerHTML = "Done! Thank you for playing!</br>";
+var demoDiv = document.createElement('div');
+  demoDiv.id = "demoDiv";
+  document.body.appendChild(demoDiv);
+  $('#demoDiv')
+  .attr('style',"margin-left:45px")
+  .css('font-size',"20px")
+.append('<form id="demoForm" action = "https://www.mturk.com/mturk/externalSubmit" method="POST">\
+        <p>Please provide us with some information about you and how you did the experiment. We will keep this information private, and it will help us very much when we analyze the data.</p>\
+        <p><b>Did you write stuff down or take notes during the task?</b><br>\
+        Please be honest - it won\'t affect your payment, we promise, and if you tell us now we can correct for this in our analysis without affecting the validity of our experiment.<br>\
+        <input type="radio" name="writing" id="writingN" value="no" onclick = "checkFilledDemo()"/>No I did not make notes<br>\
+        <input type="radio" name="writing" id="writingY" value="yes"onclick = "checkFilledDemo()"/>OK I confess, I did make notes!\
+        <p><b>Language background</b><br>\
+        <input id="langNative" name="langNative" size="20" /> Native language(s)<br>\
+        <input id="langOther" name="langOther" size="20"/> Other language experience (indicate if fluent)\
+        <p> Please tell us how you would translate the word "'+prepVert+'"in English: <br>\
+                  <input type="radio" name="PV" id="atopV" value="atop" onclick = "checkFilledDemo()"/>atop/on top of<br>\
+                  <input type="radio" name="PV" id="underV" value="under" onclick = "checkFilledDemo()"/>under/below<br>\
+                  <input type="radio" name="PV" id="vertV" value="vert" onclick = "checkFilledDemo()"/>either above or below (word can mean either)<br>\
+                  <input type="radio" name="PV" id="leftV" value="left" onclick = "checkFilledDemo()"/>to YOUR left of<br>\
+                  <input type="radio" name="PV" id="rightV" value="right" onclick = "checkFilledDemo()"/>to YOUR right of<br>\
+                  <input type="radio" name="PV" id="horV" value="horiz" onclick = "checkFilledDemo()"/>next to (either your left or your right, the word can mean either)<br>\
+                  <input type="radio" name="PV" id="noV" value="none" onclick = "checkFilledDemo()"/>don\'t know<br>\
+                  <input type="radio" name="PV" id="otherV" value="" onclick = "checkFilledDemo()"/>other: <input type ="text" onkeyup = "checkFilledDemo()" id="otherTextV"/><br>\
+        <p> Please tell us how you would translate the word "'+prepHoriz+'"in English: <br>\
+                  <input type="radio" name="PH" id="atopH" value="atop" onclick = "checkFilledDemo()"/>atop/on top of<br>\
+                  <input type="radio" name="PH" id="underH" value="under" onclick = "checkFilledDemo()"/>under/below<br>\
+                  <input type="radio" name="PH" id="vertH" value="vert" onclick = "checkFilledDemo()"/>either above or below (word can mean either)<br>\
+                  <input type="radio" name="PH" id="leftH" value="left" onclick = "checkFilledDemo()"/>to YOUR left of<br>\
+                  <input type="radio" name="PH" id="rightH" value="right" onclick = "checkFilledDemo()"/>to YOUR right of<br>\
+                  <input type="radio" name="PH" id="horH" value="horiz" onclick = "checkFilledDemo()"/>next to (either your left or your right, the word can mean either)<br>\
+                  <input type="radio" name="PH" id="noH" value="none" onclick = "checkFilledDemo()"/>don\'t know<br>\
+                  <input type="radio" name="PH" id="otherH" value="" onclick = "checkFilledDemo()"/>other: <input type ="text" onkeyup = "checkFilledDemo()" id="otherTextH"/><br>\
+          <br>\
+<p>(Optional) Include any other comments you for us, any feedback on the HIT, or anything else you want us to know. If you took notes, you could tell us briefly here what sort of stuff you wrote down.<br>\
+        <textarea id="comments" name="comments" rows="10" cols="60"></textarea></p>\
+         <input type="submit" id = "hit" value="Submit HIT" onclick="checkOther()" style="height: 35px; width: 130px; font-size: 18px; visibility: hidden">\
+        </form>');
+	$('#demoForm')
+	.append('<input type="hidden" name="assignmentId" value="'+ assignId +'" />')
+	.append('<input type="hidden" name="hitId" value="'+ hitId +'" />')
+	.append('<input type="hidden" name="workerId" value="'+ workerId +'" />')
+	$('#demoForm').submit(function(e) {
+    e.preventDefault();
+    returnDemoData($(this))
+	});
+}
+}
+}
+
+otherG = document.getElementById("otherG"); 
+other_text = document.getElementById("other_text"); 
+checkOther = function(){
+        if (otherH.checked == true){
+            otherH.value = otherTextH.value
+        }       
+     if (otherV.checked == true){
+            otherV.value = otherTextV.value
+        }   
+    }
+
+
+
+function returnDemoData(theform) {
+  $.ajax({
+      type: 'POST',
+      url: 'https://www.edavis.ppls.ed.ac.uk/emilySaveDemographicsIter.php',
+      cache:false,
+      data:theform.serialize(),
+      success: function(phpReturnInfo) {
+				setTimeout(function() {
+					theform.unbind('submit').submit();},1000);
+      }})
+    }
+
+function atLeastOneRadio() {
+    textH = document.getElementById("otherTextH").value
+    textV = document.getElementById("otherTextV").value
+return (document.getElementById("writingN").checked || document.getElementById("writingY").checked)  && 
+(document.getElementById("atopV").checked || 
+document.getElementById("underV").checked ||
+document.getElementById("leftV").checked ||
+document.getElementById("rightV").checked ||
+document.getElementById("vertV").checked ||
+document.getElementById("horV").checked ||
+document.getElementById("noV").checked||
+(document.getElementById("otherV").checked &&  textV.length >0))  && 
+(document.getElementById("atopH").checked || 
+document.getElementById("underH").checked ||
+document.getElementById("leftH").checked ||
+document.getElementById("rightH").checked ||
+document.getElementById("vertH").checked ||
+document.getElementById("horH").checked ||
+document.getElementById("noH").checked||
+(document.getElementById("otherH").checked && textH.length >0)) 
+}
+
+function checkFilledDemo() {
+text2 = document.getElementById("langNative").value //get rid of commas and newlines, they mess up the csv
+if ( text2.length >0 && atLeastOneRadio()==true) {
+document.getElementById("hit").style.visibility = "visible";
+} else {
+document.getElementById("hit").style.visibility = "hidden";
+}
+}
+
+
+
+</script></body>
+</html>

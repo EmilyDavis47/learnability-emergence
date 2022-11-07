@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head><meta http-equiv="Content-Type" content="text/html; charset=us-ascii">
+	<title></title>
+	<style type="text/css">.buttonplain {
+  text-align: center;
+  border: 2px outset gray;
+  background: white;
+  padding: 3px;
+  margin: 0 auto;
+  cursor: pointer;
+  }
+	</style>
+</head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<body>
+<h1>Two important things before you get started</h1>
+
+<p>Please do not take written notes! In this experiment we are interested in what your brain can do, not what your brain plus a notebook can do, so please don&#39;t write anything down. Just do your best - we are interested in what you can&#39;t learn as well as what you can.</p>
+
+<p>Please do not reload the page, press the back button, or backspace past this point! If you do, you will be treated as a repeat participant and locked out of the HIT. If you experience problems part-way through the HIT, email Emily (e4davis@ucsd.edu) and we will ensure you are reimbursed for your time.</p>
+
+<p><span class="buttonplain" id="cont">Continue</span></p>
+</body>
+
+<script>
+var url = "";
+var assignId = "TEST";
+var hitId = "TEST";
+var workerId = "NOTAREALWORKERID";
+
+	var url = ''+window.location;
+    var info = url.split("?")[1]; 
+	var params =url.split("?")[1].split("&");
+$(document).ready(function() {
+	for (var i=0; i<params.length; i++)
+	{
+		var name = params[i].split("=")[0];
+		var value = params[i].split("=")[1];
+		//insert_hidden_into_form('mturkSubmitForm',name,value);
+		if (name=="assignmentId") {
+			assignId = value;
+		}
+		if (name=="hitId") {
+			hitId = value;
+		}
+		if (name=="workerId") {
+			workerId = value;
+		}
+		if (name=="debug") {	// values can be: nowait, which allows you to continue past instructions without minimum wait
+			debug = value;
+		}
+		if (name=="jump") {	// values can be: ...
+			jump = parseInt(value);
+		}
+	}
+
+})
+
+urlNew = "https://www.edavis.ppls.ed.ac.uk/mainTaskIterCopy.html?"+info; 
+document.getElementById("cont").setAttribute("onclick", "location.href=urlNew");
+
+function duplicateParticipantDetected() {
+document.getElementById("welcome").style.display = "none"; 
+document.getElementById("blocked").style.display = "block"; 
+}
+
+
+</script>
+</html>
