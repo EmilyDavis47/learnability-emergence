@@ -1,0 +1,1045 @@
+<html>
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title></title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.js"></script> 
+</head>
+<body>
+<style type="text/css">p, div, span, #ans {
+
+font-size: 25px;}
+#count, #countTest {
+
+font-size: 20px;}
+#test, #nextb, #entry, #testIntro, #writeIntro{
+display: none
+}
+#train2 {borders: 50px}
+.pics1 {display: flex
+
+}
+
+.grid-container {
+
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+}
+.im:hover{
+ background:#00ffff;
+}
+.grid-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.buttonplain {
+  text-align: center;
+  border: 2px outset gray;
+  background: white;
+  padding: 3px;
+  margin: 0 auto;
+  cursor: pointer;
+  }
+</style>
+<center>
+<div id="viewIntro">You will now see a series of alien objects, or collections of these objects,<br />
+with captions in the alien language.<br />
+Do your best to remember the meanings.<br />
+Also, remember that words in this language aren't put together the same way as in English!<br />
+&nbsp;</div>
+
+<div id="begin"><span class="buttonplain" onclick="startLevel()">Click Here To Start</span></div>
+
+<div class="buttonplain" id="nextb" onclick="startLevel()">Next</div>
+
+<p id="debug"></p>
+
+<div id="train">
+<p id="count"></p>
+
+<p id="trainlabel"></p>
+&nbsp;
+
+<table>
+  <tbody>
+    <tr>
+    </tr>
+    <tr id="train2">
+    </tr>
+  </tbody>
+</table>
+
+<p id="inner"></p>
+</div>
+
+<div id="testIntro">Now that you have learned the names for some objects, you will be tested on your comprehension. <!-- br--></div>
+
+<div id="writeIntro">You have completed your training. Now you will be asked to label items in the alien language. Please enter something even if you&#39;re not sure what the correct answer would be. <!-- br--></div>
+
+<div id="test">
+<p id="countTest"></p>
+
+<p id="question"></p>
+
+<div id="resp"></div>
+
+<div id="lvl"></div>
+
+<div class="grid-container">
+<div class="grid-item">
+<table class="im">
+  <tbody>
+    <tr class="pics1" onclick="check(this.id)">
+    </tr>
+  </tbody>
+</table>
+
+<p class="ht"></p>
+</div>
+
+<div class="grid-item">
+<table class="im">
+  <tbody>
+    <tr class="pics1" onclick="check(this.id)">
+    </tr>
+  </tbody>
+</table>
+
+<p class="ht"></p>
+</div>
+
+<div class="grid-item">
+<table class="im">
+  <tbody>
+    <tr class="pics1" onclick="check(this.id)">
+    </tr>
+  </tbody>
+</table>
+
+<p class="ht"></p>
+</div>
+
+<div class="grid-item">
+<table class="im">
+  <tbody>
+    <tr class="pics1" onclick="check(this.id)">
+    </tr>
+  </tbody>
+</table>
+
+<p class="ht"></p>
+</div>
+</div>
+</div>
+
+<div class="grid-item" id="entry">
+<p id="countWrite"></p>
+
+<table>
+  <tbody>
+    <tr id="whatis">
+    </tr>
+  </tbody>
+</table>
+
+<div id="answers"><textarea cols="100" id="ans" onkeyup="checkFilled(this.id, 'entr')" rows="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea><span class="buttonplain" id="entr" onclick="" style="visibility: hidden">Enter</span></div>
+
+<div id="resp2"></div>
+<!-- <div id = "another"> <span class="buttonplain" onclick="start()">Do another</span></div> --></div>
+
+<div id="done"></div>
+</center>
+<script>
+var prepHoriz = "moy";
+var prepVert = "rae";
+var conditions = ["CEPre"]; //"PreNomPostPos", "PostNomPrePos", "CEPre", "CEPost"; to fix condition, put only one as option 
+function getCaptionPreps(x) { 
+  captionPreps = [];
+  if (typeof(x) == "number") {
+    captionPreps = captionPreps;
+  }
+  else {
+if (x.length == 1) { //array of one
+    captionPreps = captionPreps.concat(getCaptionPreps(x[0]));
+  }
+  else if (x.length == 2) { //array of two
+      if (typeof(x[1]) == "number" || (typeof(x[1]) != "number" && x[1].length > 1)){
+        captionPreps = getCaptionPreps(x[0]).concat([prepHoriz]).concat(getCaptionPreps(x[1]));
+      }
+      else if (typeof(x[1]) != "number" && x[1].length == 1) {
+        captionPreps = getCaptionPreps(x[0]).concat([prepVert]).concat(getCaptionPreps(x[1]));
+      }
+    }
+    } 
+  return captionPreps;
+}
+
+var arrayToCaption = { //list of functions! 
+"CEPre": function arrayToCaptionPreNomPrePos(x) { //[nextto [atop z] y] x
+        caption = [];
+          if (typeof(x) == "number") {
+          caption = [items[x][0]]
+        }
+        else if (typeof(x) != "number" && x.length == 1) {
+          caption = arrayToCaptionPreNomPrePos(x[0])
+        }
+          else if (typeof(x) != "number" && x.length == 2) {
+          objs = flatten(x);
+          captionItems = [];
+          captionPreps = getCaptionPreps(x);
+          for (i = 0; i < objs.length; i++) {
+            if (i == 0) {
+              captionItems = captionItems.concat(items[objs[i]][0]);
+            }
+            else {
+              captionItems = captionItems.concat(items[objs[i]][0]);
+            }
+          }
+          let captionItemsBackwards = [...captionItems].reverse();
+          caption = captionPreps.concat(captionItemsBackwards);
+        }
+        caption2 =  Array.prototype.join.call(caption, " ");
+        return caption2;
+      },
+"CEPost": function arrayToCaptionPostNomPostPos(x) { //x [y [z atop] nextto]
+    caption = [];
+      if (typeof(x) == "number") {
+      caption = [items[x][0]] }
+    else if (typeof(x) != "number" && x.length == 1) {
+      caption = arrayToCaptionPostNomPostPos(x[0])
+    }
+      else if (typeof(x) != "number" && x.length == 2) {
+      objs = flatten(x);
+      captionItems = [];
+      captionPreps = getCaptionPreps(x); //backwards
+      let captionPrepsBackwards = [...captionPreps].reverse();
+      for (i = 0; i < objs.length; i++) {
+        if (i == 0) {
+          captionItems = captionItems.concat([items[objs[i]][0]]);
+        }
+        else {
+          captionItems = captionItems.concat([items[objs[i]][0]]); 
+        }
+      }
+      caption = captionItems.concat(captionPrepsBackwards);
+    }
+    caption2 =  Array.prototype.join.call(caption, " ");
+    return caption2;
+  },
+    "CrossPre": function arrayToCaptionCrossPre(x) { //[nextto [atop z] y] x
+        caption = [];
+          if (typeof(x) == "number") {
+          caption = [items[x][0]]
+        }
+        else if (typeof(x) != "number" && x.length == 1) {
+          caption = arrayToCaptionCrossPre(x[0])
+        }
+          else if (typeof(x) != "number" && x.length == 2) {
+          objs = x.flat(Infinity);
+          captionItems = [];
+          captionPreps = getCaptionPreps(x);
+          for (i = 0; i < objs.length; i++) {
+            if (i == 0) {
+              captionItems = captionItems.concat(items[objs[i]][0]);
+            }
+            else {
+              captionItems = captionItems.concat(items[objs[i]][0]);
+            }
+          }
+          caption = captionPreps.concat(captionItems);
+        }
+        caption2 =  Array.prototype.join.call(caption, " ");
+        return caption2;
+      },
+"CrossPost": function arrayToCaptionCrossPost(x) { //x [y [z atop] nextto]
+    caption = [];
+      if (typeof(x) == "number") {
+      caption = [items[x][0]] }
+    else if (typeof(x) != "number" && x.length == 1) {
+      caption = arrayToCaptionCrossPost(x[0])
+    }
+      else if (typeof(x) != "number" && x.length == 2) {
+      objs = x.flat(Infinity);
+      captionItems = [];
+      captionPreps = getCaptionPreps(x); //backwards
+      for (i = 0; i < objs.length; i++) {
+        if (i == 0) {
+          captionItems = captionItems.concat([items[objs[i]][0]]);
+        }
+        else {
+          captionItems = captionItems.concat([items[objs[i]][0]]); 
+        }
+      }
+      caption = captionItems.concat(captionPreps);
+    }
+    caption2 =  Array.prototype.join.call(caption, " ");
+    return caption2;
+  },
+"PreNomPostPos":function arrayToCaptionPreNomPostPos(x) {
+    caption = ''
+    if (typeof(x) == "number") {
+    caption = items[x][0]; 
+    } else if (typeof(x) != "number" && x.length ==1) { //[0,[1]]
+    caption = arrayToCaptionPreNomPostPos(x[0]); 
+    } else if (typeof(x) != "number" && x.length ==2) { 
+      if (typeof(x[1]) == "number" ||x[1].length >1) {//[0,[1,2]]; [0,1]
+      caption = "" + arrayToCaptionPreNomPostPos(x[1]) + " "+prepHoriz + " " + arrayToCaptionPreNomPostPos(x[0]);
+      } else {
+      caption = "" +arrayToCaptionPreNomPostPos(x[1]) + " "+prepVert + " " + arrayToCaptionPreNomPostPos(x[0]);
+      }
+    }
+      return caption;  
+    },
+"PostNomPrePos": function arrayToCaptionPostNomPrePos(x) {
+    caption = ''
+    if (typeof(x) == "number") {
+    caption = items[x][0]; 
+    } else if (typeof(x) != "number" && x.length ==1) { //[0,[1]]
+    caption = arrayToCaptionPostNomPrePos(x[0]); 
+    } else if (typeof(x) != "number" && x.length ==2) { 
+      if (typeof(x[1]) == "number" ||x[1].length >1) {//[0,[1,2]]; [0,1]
+      caption = arrayToCaptionPostNomPrePos(x[0]) + " "+prepHoriz + " " + arrayToCaptionPostNomPrePos(x[1])+ "";
+      } else {
+      caption = arrayToCaptionPostNomPrePos(x[0]) + " "+prepVert + " " + arrayToCaptionPostNomPrePos(x[1])+ "";
+      }
+    }
+      return caption;  
+    }
+};
+//center-embedding prepositions, center-embedding postpositions, postnominal PreP, prenominal PostP
+//eliminate maxed out conditions
+var condRand = Math.floor(Math.random() * conditions.length);
+var condition = conditions[condRand];
+console.log(condition);
+var maxed = $.parseJSON($.ajax({
+      url: 'https://www.edavis.ppls.ed.ac.uk/checkConditionList.php',//url of receiver file on server
+        async: false
+}).responseText);
+var maxed = [];
+console.log(maxed);
+if (maxed.length == conditions.length) {
+    console.log("all maxed");
+}
+while (maxed.includes(condition)) {
+    console.log("maxed out")
+var condRand = Math.floor(Math.random() * conditions.length);
+var condition = conditions[condRand];
+console.log(condition);
+}
+
+var items = [['','2002'], ['','2022'], ['','2050'], ['','2064'], ['', 'cube2'], ['', 'sphere2'], ['', 'cylinder']]; 
+var engNames = ['cube', 'sphere', 'cylinder'];
+var engArrays = [[[5,4], [4,[5]], [4,5], [5,[4]]], //sphere moy cube
+[[5,6], [5,[6]],[6,5], [6,[5]]], //sphere moy cylinder
+[ [5,[4]], [4,5], [4,[5]], [5,4]],//sphere rae cube
+[ [5,[6]], [6,5], [6,[5]], [5,6]]]; //sphere rae cylider
+var itemsViewed = 0; //how many items seen in passive
+var trialsDone = 0; //how many selection trials done in active
+var score = 0;
+var testsTotal = 0;
+var level = 0; //make sure set to 0 for actual task 
+var itemsPerLevel = [4,4,8,8,8]; //[4,4,8,8,8];
+var trialsPerLevel = [4,4,8,8,8];//[4,4,8,8,8];
+var unseen = 4; //additional items in writing
+var levelsTotal = 3; //4
+var levelsTotalWrite = 2; //5
+var itemsEntered = 0; //make sure set to 0 for actual task; 32 total 
+var randNamesTen = [["kilkul","vanva","tovo","sunsin"],
+["kuka","tultol","vinkin","solsil"],
+["sulsal","tinkin","kakan","volsol"],
+["vusu","tinkin","solson","kolkil"],
+["tuntul","vinkin","sosi","kanka"],
+["toltul","vivin","sasan","koto"],
+["soko","vilval","tulkul","kinsin"],
+["sisu","vinvi","konkan","tulsul"],
+["titil","vuntun","silvil","kaku"],
+["valtal","kolkul","siso","tontin"]];
+var stage = "training"; //can be training, testing, or write-in
+var stage2 = '';
+var url = "";
+var assignId = "TEST";
+var hitId = "TEST";
+var workerId = "NOTAREALWORKERID";
+$(document).ready(function() {
+  url = ''+window.location;
+  var params = url.split("?")[1].split("&");
+  for (var i=0; i<params.length; i++)
+  {
+    var name = params[i].split("=")[0];
+    var value = params[i].split("=")[1];
+  //  insert_hidden_into_form('mturkSubmitForm',name,value);
+    if (name=="assignmentId") {
+      assignId = value;
+    }
+    if (name=="hitId") {
+      hitId = value;
+    }
+    if (name=="workerId") {
+      workerId = value;
+    }
+    if (name=="debug") {  // values can be: nowait, which allows you to continue past instructions without minimum wait
+      debug = value;
+    }
+    if (name=="jump") { // values can be: ...
+      jump = parseInt(value);
+    }
+  }
+
+})
+
+
+ans.addEventListener("keyup", function(event) {
+  // Number 13 is the "Enter" key on the keyboard
+  if (event.keyCode === 13) {
+    // Trigger the button element with a click
+    document.getElementById("entr").click();
+  }
+});
+var itemsSeenTraining = [];
+var itemsSeenTesting = []; 
+function writeData(data) {
+  var dataToRecord = $.extend({'workerId':workerId,
+    'assignmentId':assignId,
+    'hitId':hitId,
+    'condition':condition,
+    'chain':"none",
+    'generation':"blah",
+'level':level},data)
+  console.log(dataToRecord)
+    $.ajax({
+      type: 'POST',
+      url: 'https://www.edavis.ppls.ed.ac.uk/emilySaveData.php',//url of receiver file on server
+      data:dataToRecord,
+      cache:false
+});
+
+}
+
+function shuffleArray(a) {
+    var j, x, i;
+    for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    return a;
+}
+
+var nameSet = Math.floor(Math.random() * 10);
+var randnames = randNamesTen[nameSet].concat(engNames);
+console.log(randnames);
+for (k = 0; k < items.length; k++) {
+items[k][0] = randnames[k]; 
+}
+
+
+
+
+function arrayToCaption1(x) { //for testing captions, NP [P NP] order
+caption = ''
+if (typeof(x) == "number") {
+caption = items[x][0]; 
+} else if (typeof(x) != "number" && x.length ==1) { //[0,[1]]
+caption = arrayToCaption1(x[0]); 
+} else if (typeof(x) != "number" && x.length ==2) { 
+  if (typeof(x[1]) == "number" ||x[1].length >1) {//[0,[1,2]]; [0,1]
+  caption = arrayToCaption1(x[0]) + " "+prepHoriz + " " + arrayToCaption1(x[1]);
+  } else {
+  caption = arrayToCaption1(x[0]) + " "+prepVert + " " + arrayToCaption1(x[1]);
+  }
+}
+  return caption;  
+}
+
+
+function arrayToPic(x, sizeH, sizeV, z, lower) {
+pics = ''
+if (typeof(x) == "number") {
+ pics =  '<img src="https://www.edavis.ppls.ed.ac.uk/images/'+items[x][1]+'-600.png"style="width:'+sizeH+'px;height:'+sizeV+'px; margin-bottom:-'+lower+'px; margin-top:-'+Math.floor(sizeV/10)+'px;margin-left:-'+Math.floor(sizeH/10)+'px;margin-right:-'+Math.floor(sizeH/10)+'px;position: relative; z-index: '+z+';">';
+} else if (typeof(x) != "number" && x.length ==1) { //array of one
+  pics = arrayToPic(x[0], sizeH, sizeV, z, lower); 
+} else { //larger array
+  //special case of "Flat" array 
+  if (arrayToCaption1(x).split(prepVert).length == 1){ //horizontal 
+    x = flatten(x);
+    for (j = 0; j < x.length; j++) {
+      pics += '<td valign ="bottom" align = "center">'+arrayToPic(x[j], Math.floor(sizeH/x.length), Math.floor(sizeV/x.length), z, lower) +'</td>'
+    }
+  } else if (arrayToCaption1(x).split(prepHoriz).length == 1){ //vertical
+    x = flatten(x);
+    pics = '<td valign ="bottom" align = "center">' 
+    for (j = 0; j < x.length; j++) {
+      pics +=  '<table><tr>' + arrayToPic(x[j], Math.floor(sizeH/x.length), Math.floor(sizeV/x.length), z-j, Math.floor(sizeV/20)) + '</tr>';
+    }
+    pics += "</td></tr></table></td>";
+  } else {
+  if (typeof(x[1]) == "number" ||x[1].length >1) {//[0,[1,2]]; [0,1] 
+  pics = '<td valign ="bottom" align = "center"><table><tr><td valign ="bottom" align = "center"> '+arrayToPic(x[0], sizeH, sizeV, z, lower) +'</td><td valign ="bottom" align = "center">'+ arrayToPic(x[1], sizeH, sizeV, z, lower)+ '</td></tr></table></td>';
+  } else {//stacked array
+  topSize = arrayToCaption1(x[0]).split(prepHoriz).length;
+   pics = '<td valign ="bottom" align = "center"> <table><tr>' + arrayToPic(x[0], sizeH, sizeV, z+1, Math.floor(sizeV/20)) + '</tr><tr><td valign ="bottom" align = "center" colspan = "'+topSize+'">' + arrayToPic(x[1], sizeH, sizeV, z-1, 0) + "</td></tr></table></td>";
+  }
+  }
+}
+  return pics;  
+}
+
+function arrayToPicSize(x, sizeH, sizeV, z, lower) {
+    //need this for testing aspects of caption
+  if (arrayToCaption1(x).split(prepVert).length == 1  || arrayToCaption1(x).split(prepHoriz).length == 1 ) { //horizontal or vertical
+return arrayToPic(x, sizeH, sizeV, z, lower)
+  } else {
+    return arrayToPic(x, Math.floor(sizeH/2), Math.floor(sizeV/2), z, lower)
+  }
+}
+
+
+function twoArrayCombiner(ar) {
+  combos = [];
+    for (a = 0; a < 2; a ++) {  
+      for (b = 0; b < 2; b ++) { 
+      if (b == a) {
+      continue; //don't join object to itself
+      } else {
+          a2 = ar[a];
+          b2 = ar[b]; 
+        cs = [[a2,b2], 
+          [a2, [b2]], 
+            [b2,a2], 
+            [b2,[a2]]]; 
+        for (x = 0; x < cs.length; x++) {
+          nCombo = cs[x];
+          combos.push(nCombo);
+      }
+      }
+  }
+  } 
+
+  return combos;
+}
+   
+   
+const flatten = function(arr, result = []) {
+  for (let i = 0, length = arr.length; i < length; i++) {
+    const value = arr[i];
+    if (Array.isArray(value)) {
+      flatten(value, result);
+    } else {
+      result.push(value);
+    }
+  }
+  return result;
+};
+
+function arraysEqual(_arr1, _arr2) {
+  //special case for rebracketed linear arrays 
+  if ((arrayToCaption1(_arr1).split(prepVert).length == 1 && arrayToCaption1(_arr2).split(prepVert).length == 1) || (arrayToCaption1(_arr1).split(prepHoriz).length == 1 && arrayToCaption1(_arr2).split(prepHoriz).length == 1)){ //horizontal or vertical
+    _arr1 = flatten(_arr1);
+    _arr2 = flatten(_arr2);
+  }
+return JSON.stringify(_arr1) == JSON.stringify(_arr2);
+}
+
+//rule out duplicates 
+function arrayContains(ar, item) {
+for (i = 0; i < ar.length; i++) {
+if (ar[i]=== item || arraysEqual(ar[i], item)) {
+return true;
+}
+}
+return false;
+}
+
+
+//selections== which arrays to use from the array: first combo, second combo, third combo
+//0 = 1, 2
+//1 = 1 atop 2
+//2 = 2, 1
+//3 = 2 atop 1
+//this can be used for ensuring that arrays have same structure
+function loopArrayCombinerSelect(elements, selections) {
+if (elements.length == 2) {
+return twoArrayCombiner(elements)[selections[0]]; 
+} else {
+firstTwo = elements.slice(0,2); 
+firstTwoArray = twoArrayCombiner(firstTwo)[selections[0]];
+restOf = elements.slice(2, elements.length); 
+restOfSel = selections.slice(1, selections.length);  
+return loopArrayCombinerSelect([firstTwoArray].concat(restOf), restOfSel);
+}
+}
+
+//rule out all-even or all-odd selection numbers; these produce "flat" or "tower" arrays; different bracketing produces identical results
+function isEquivStructure(array1, array2) {
+    const isEven= (currentValue) => currentValue % 2 == 0;
+    const isOdd= (currentValue) => currentValue % 2 == 1;
+    if ((array1.every(isEven) & array2.every(isEven) == true ) || (array1.every(isOdd) & array2.every(isOdd) == true )) {
+        return true;
+} else {
+    return false; 
+}
+}
+
+function getCounterparts(elements1, selections, allElements) {
+//given elements of first array, get counterpart arrays
+ar = loopArrayCombinerSelect(elements1, selections); 
+counters = [ar]; 
+itemsS = elements1;
+itemsD = []
+for (i = 0; i < itemsS.length; i++) {
+sel = Math.floor((Math.random() * 4));
+itemsD.push(sel)
+}
+while (arraysEqual(itemsS.sort(),itemsD.sort()) == true) {
+itemsD = []
+for (i = 0; i < itemsS.length; i++) {
+sel = Math.floor((Math.random() * 4));
+itemsD.push(sel)
+}
+}//avoid getting the same array back
+strSitemsD = loopArrayCombinerSelect(itemsD, selections);
+
+strD = [];
+for (i = 0; i < selections.length; i++) {
+sel = Math.floor((Math.random() * 4));
+strD.push(sel)
+}
+
+strDitemsS = loopArrayCombinerSelect(itemsS, strD);//same items, new structure
+strDitemsD = loopArrayCombinerSelect(itemsD, strD);//new items, new structure
+while (arraysEqual(strSitemsD, strDitemsD) == true | arraysEqual(ar, strDitemsS) == true || isEquivStructure(strD, selections)) {//make sure no duplicates
+strD = [];
+for (i = 0; i < selections.length; i++) {
+sel = Math.floor((Math.random() * 4));
+strD.push(sel)
+}
+strDitemsS = loopArrayCombinerSelect(itemsS, strD);//same items, new structure
+strDitemsD = loopArrayCombinerSelect(itemsD, strD);//new items, new structure
+}
+counters.push(strSitemsD); 
+counters.push(strDitemsS);
+counters.push(strDitemsD); 
+return counters; 
+}
+
+
+//get ambiguous 3 and 4 item entries
+ambig3AN = [[1,0],[0,3]]
+ambig3NA = [[0,1],[1,2]]
+ambigTypes3 = [ambig3AN, ambig3NA]
+
+
+function getAmbig3(items, type) {//items and type of ambiguity
+amb1 = loopArrayCombinerSelect(items, ambigTypes3[type][0]);
+itemsPerm = items.slice(1, items.length).concat(items.slice(0,1));
+//move first item to end
+amb2 = loopArrayCombinerSelect(itemsPerm, ambigTypes3[type][1]);
+return [amb1, amb2]; 
+} 
+
+//for constructing ambiguous four-item arrays out of a given item list
+//take a random array from the result
+configsAAN = [[0,3,3], [1,0,3], [1,3,0]];
+configsANA = [[1,2,3], [0,1,3], [1,0,1]];
+configsANN = [[0,0,3], [0,3,0], [1,0,0]];
+configsNAA = [[1,1,2], [1,2,1], [0,1,1]];
+configsNAN = [[0,3,2], [1,2,0], [0,1,0]];
+configsNNA = [[1,2,2], [0,1,2], [0,2,1]];
+ambigTypes = [configsAAN, configsANA, configsANN, configsNAA, configsNAN, configsNNA];
+permsAmbig = [[[2,3,1,0], [1,2,3,0], [1,2,0,3]], //each set of permutations goes with a particular set of choices
+[[2,3,1,0], [1,2,3,0], [0,1,2,3]],
+[[1,2,3,0], [1,2,0,3], [0,1,2,3]],
+[[1,2,3,0], [1,2,0,3], [0,1,2,3]],
+[[2,3,1,0], [1,2,0,3], [0,1,2,3]],
+[[2,3,1,0], [1,2,3,0], [1,2,0,3]]
+];
+
+function getAmbig4(items, type) {//items and type of ambiguity
+final = [];
+perms = []; 
+for (i =0; i < permsAmbig[0].length; i++) {
+  perm = [];
+  for (j =0; j < items.length; j++) {
+  perm.push(items[permsAmbig[type][i][j]]);
+} 
+perms.push(perm);
+} 
+for (i =0; i < permsAmbig[0].length; i++) {
+ final.push(loopArrayCombinerSelect(perms[i], ambigTypes[type][i]))
+} 
+
+return final;
+}
+
+
+//combining levels
+//shuffle items 4 times to get 1-item "counters"
+allItems = [0,1,2,3];
+allConfigSelections = [0,1,2,3];
+var listAll1 = [];
+for (y = 0; y < 4; y ++) {
+comp = allItems.filter(item => allItems.indexOf(item) != y);
+sh= [allItems[y]].concat(shuffleArray(comp));
+listAll1.push(sh);
+}
+
+listAll1indiv = [];
+for (j =0; j < listAll1.length; j++) {
+  listAll1indiv.push(listAll1[j][0]);
+}
+
+function random_item(items)
+{
+return items[Math.floor(Math.random()*items.length)];  
+}
+//also make ambiguous entries for 3 and 4 items
+omit = Math.floor(Math.random() * (4));
+//chose one item to omit, of the four, leaving 3 different items
+items3ambig = allItems.filter(function(value, index, arr){
+    return value != omit;
+});
+select3ambig =  Math.floor(Math.random() * (2));
+list3Ambig = getAmbig3(items3ambig, select3ambig); 
+items4ambig = allItems;
+select4ambig =  Math.floor(Math.random() * (6));
+list4Ambig = getAmbig4(items4ambig, select4ambig); 
+
+//concatenate onto write list at appropriate level
+
+listAllIndividual = listAll1indiv; //individual items
+listAllCounters = [listAll1, engArrays]; //items plus counterparts
+for (l = 2; l < levelsTotalWrite; l++) {
+  listAllCounterLevel = [];
+  listAllIndivLevel = [];
+while (listAllIndivLevel.length < itemsPerLevel[l]+unseen) {//4 unseen, for writing level
+    //generate random set of items, and config, to combine
+itemsRand = [];
+while (itemsRand.length < l) {
+r = random_item(allItems);
+itemsRand.push(r);
+}
+selsRand = [];
+while (selsRand.length < l-1) {
+r = random_item(allConfigSelections);
+selsRand.push(r);
+}
+
+levelItem = loopArrayCombinerSelect(itemsRand, selsRand);
+levelCounter = getCounterparts(itemsRand, selsRand, allItems);
+
+  while (arrayContains(listAllIndivLevel, levelItem) == true) {//prevent repeats 
+  itemsRand = [];
+  while (itemsRand.length < l) {
+  r = random_item(allItems);
+  itemsRand.push(r);
+  }
+  selsRand = [];
+  while (selsRand.length < l-1) {
+  r = random_item(allConfigSelections);
+  selsRand.push(r);
+  }
+  levelItem = loopArrayCombinerSelect(itemsRand, selsRand);
+  levelCounter = getCounterparts(itemsRand, selsRand, allItems);
+  }
+listAllIndivLevel.push(levelItem);
+listAllCounterLevel.push(levelCounter);
+
+}
+writeItems = shuffleArray(listAllIndivLevel); 
+listAllIndividual = listAllIndividual.concat(writeItems);//for write ins, including unseen
+listAllCounters.push(listAllCounterLevel);
+}
+
+var images = document.getElementsByClassName("pics1");
+
+var moyEx = [[4,5],[4,4],[4,6]];
+var raeEx = [[4,[5]],[4,[4]],[4,[6]]];
+var moyEx2 = [[5,5],[5,4],[5,6]];
+var raeEx2 = [[5,[5]],[5,[4]],[5,[6]]];
+var lvlOne = [moyEx, raeEx,moyEx2, raeEx2]
+var adPs = ["moy", "rae", "moy", "rae"];
+
+function displayItem() {
+document.getElementById("train2").innerHTML = "";
+on = itemsViewed+1;
+document.getElementById("count").innerHTML =
+on + " of " + itemsPerLevel[level];
+document.getElementById("begin").style.display = "none";
+
+//show first item in each list of 4
+if (level == 1) {
+  for (i = 0; i < 3; i++) {
+document.getElementById("train2").innerHTML += arrayToPicSize(lvlOne[itemsViewed][i], 200, 200, 1, 0);
+document.getElementById("train2").innerHTML += '<img src="https://www.edavis.ppls.ed.ac.uk/images/wh-600.png" width = "50" height = "100">';
+}
+document.getElementById("trainlabel").innerHTML = "In these images the "+ arrayToCaption[condition](lvlOne[itemsViewed][0][0]) + " is "+ adPs[itemsViewed]+" the other object";
+} else {
+size = 100* (4- level/2);
+document.getElementById("train2").innerHTML = arrayToPicSize(listAllCounters[level][itemsViewed][0], size, size, -1, 0);
+document.getElementById("trainlabel").innerHTML = arrayToCaption[condition](listAllCounters[level][itemsViewed][0]);
+}
+document.getElementById("train").style.display = "block";
+document.getElementById("nextb").style.display = "block";
+document.getElementById("test").style.display = "none";
+itemsSeenTraining.push(listAllCounters[level][itemsViewed][0]);
+var trialDataToRecord = {'trialType':stage, 'nameTraining':arrayToCaption[condition](listAllCounters[level][itemsViewed][0]), 'arrayTraining': JSON.stringify(listAllCounters[level][itemsViewed][0])};
+writeData(trialDataToRecord);
+itemsViewed++;
+}
+
+
+function displayTest(){
+document.getElementById("testIntro").style.display = "none";
+on = trialsDone+1;
+document.getElementById("countTest").innerHTML =
+on + " of " + trialsPerLevel[level] + "; " + score + " out of "+ on + " correct";
+on = trialsDone+1;
+document.getElementById("count").innerHTML =
+on + " of " + trialsPerLevel[level];
+document.getElementById("nextb").style.display = "none";
+document.getElementById("resp").innerHTML = " <br> <br>"; 
+testword = bigListAll[trialsDone][0] // first array will be correct answer
+itemsSeenTesting.push(testword);
+s = shuffleArray(bigListAll[trialsDone]); //array for questions
+document.getElementById("train").style.display = "none";
+for (i = 0; i < images.length; i ++) {
+    images[i].innerHTML = arrayToPicSize(s[i],  200, 200, 3, 0);
+    images[i].id = JSON.stringify(s[i]); //correct array
+    images[i].setAttribute("onclick", "check(this.id);");
+    }
+    document.getElementById("question").innerHTML = 'Select the <span id = "testword">'+arrayToCaption[condition](testword)+'</span>';
+    document.getElementById("test").style.display = "block"; 
+}
+
+
+function displayViewIntro(){
+document.getElementById("viewIntro").style.display = "block";
+}
+
+function displayTestIntro(){
+document.getElementById("train").style.display = "none";
+document.getElementById("testIntro").style.display = "block";
+if (level == 1) {
+document.getElementById("testIntro").innerHTML = "Now that you have learned the words for some ways objects can be organized, you will be tested on your comprehension."} 
+else  {
+    document.getElementById("testIntro").innerHTML = "Now that you have learned the names for some groups of objects, you will be tested on your comprehension.";
+}
+}
+
+function displayWriteIntro(){
+document.getElementById("test").style.display = "none";
+document.getElementById("writeIntro").style.display = "block";
+}
+
+
+function checkFilled(textbox, button) {
+text = document.getElementById(textbox).value.replace(/(?:\r\n|\r|\n)/g, '');
+if (text.length > 0) {
+document.getElementById(button).style.visibility = "visible";
+document.getElementById(button).setAttribute("onclick", "checktext();");
+} else {
+document.getElementById(button).style.visibility = "hidden";
+document.getElementById(button).setAttribute ("onclick", null);
+   console.log("gotcha!")
+}
+}
+
+function displayWrite() {
+document.getElementById("writeIntro").style.display = "none";
+on = itemsEntered+1;
+document.getElementById("countWrite").innerHTML =
+on + " of " + listAllIndividual.length;
+document.getElementById("answers").style.display = "block"; 
+document.getElementById("resp2").innerHTML = " <br> <br>";
+document.getElementById("ans").value = ""; 
+checkFilled('ans', 'entr')
+item = listAllIndividual[itemsEntered];
+//chosing first item
+size = 100* (4- level/2);
+document.getElementById("whatis").innerHTML = arrayToPicSize(item, size, size, -1, 0);
+document.getElementById("entry").style.display = "block";
+document.getElementById("nextb").style.display = "none";
+document.getElementById("entr").setAttribute("onclick", "checktext();");
+}
+
+function check(x) {//x is value of clicked item
+trialsDone++;
+answer = JSON.stringify(testword);
+if (x == answer) {
+document.getElementById("resp").innerHTML = "<font color = 'green'>Good work</br></br></font>"; 
+score++;
+} else {
+document.getElementById("resp").innerHTML = "<font color = 'red'>Sorry, incorrect </br></br> </font>";
+}
+s = []; //rebuild image array
+for (i = 0; i < images.length; i ++) {
+if (images[i].id != answer) {
+    images[i].innerHTML = images[i].innerHTML.replace(/2002|2022|2050|2064|cube2|sphere2|cylinder/g, "wh"); ; //blank out incorret answers
+    }
+s.push(images[i].id); 
+    }
+//document.getElementById("nextb").style.display = "block";
+document.getElementById(answer).setAttribute("onclick", "");
+document.getElementById("countTest").innerHTML =
+on + " of " + trialsPerLevel[level] + "; " + score + " out of "+ on + " correct";
+var correct = s.indexOf(answer); 
+var seenInTraining = arrayContains(itemsSeenTraining, testword);
+var inAmbig = arrayContains(list3Ambig,testword) || arrayContains(list3Ambig,testword);
+
+var trialDataToRecord = {'trialType':stage, 'nameTraining': arrayToCaption[condition](testword), 'arrayTraining': answer, 
+'choiceArray0': s[0], 'choiceArray1': s[1], 'choiceArray2': s[2], 'choiceArray3': s[3],
+'correctChoiceNumber': correct, 'participantChoiceNumber': s.indexOf(x), 'seenInTraining': seenInTraining, 'inAmbig': inAmbig};
+writeData(trialDataToRecord);
+setTimeout(startLevel, 3000);
+} 
+
+function checktext() {
+answertext = document.getElementById("ans").value.replace(",", ";").replace(/(?:\r\n|\r|\n)/g, '');//get rid of commas and newlines
+answer = JSON.stringify(listAllIndividual[itemsEntered]);
+document.getElementById("answers").style.display = "none"; 
+var seenInTraining = arrayContains(itemsSeenTraining, listAllIndividual[itemsEntered]);
+var seenInTesting = arrayContains(itemsSeenTesting, listAllIndividual[itemsEntered]);
+var inAmbig = arrayContains(list3Ambig, listAllIndividual[itemsEntered]) || arrayContains(list3Ambig, listAllIndividual[itemsEntered]);
+var arrayLength = flatten(listAllIndividual[itemsEntered]).length; 
+if (arrayLength == 0) { 
+    var writeLevel = 0
+    
+} else {
+    var writeLevel = arrayLength-1; 
+}
+ var trialDataToRecord = {'trialType':stage, 'arrayTraining': answer,
+ 'participantText':answertext, 'compositionalAnswer':arrayToCaption[condition](listAllIndividual[itemsEntered]), 
+ 'seenInTraining': seenInTraining, 'seenInTesting': seenInTesting, 'inAmbig': inAmbig, 'level':writeLevel};
+ //what the correct answer would be in compositional language
+writeData(trialDataToRecord);
+itemsEntered++; 
+startLevel(); 
+} 
+
+function startLevel() {
+  //document.getElementById("debug").innerHTML = JSON.stringify(listAllIndividual);
+if (level < levelsTotal) {
+document.getElementById("nextb").innerHTML = "Next";
+  if (stage == "training") { //initial stage
+    if (itemsViewed < itemsPerLevel[level]) {
+    displayItem();
+document.getElementById("viewIntro").style.display = "none";
+    }else { //go to testing
+    stage = "testing"; 
+    itemsViewed = 0; //reset
+    bigListAll = shuffleArray(listAllCounters[level].slice(0,8)); //take only first eight
+    displayTestIntro();
+      }
+  } else if (stage == "testing") { //if in testing stage
+  if (trialsDone < trialsPerLevel[level]) {
+    clearTimeout(startLevel, 3000); //make sure timeout isn't ongoing
+  displayTest();
+
+  } else {
+    document.getElementById("test").style.display = "none";
+    if (level ==0) {
+    document.getElementById("nextb").innerHTML = "Now that you've seen some alien objects, you will learn some words for how objects are organized, with objects named in English. <br> Click here to advance";
+    } else if (level == 1) {
+    document.getElementById("nextb").innerHTML = "Now that you've learned some basic vocabulary, you will now learn how more complex descriptions are built up using the words you've learned. But remember that words might be put together differently than they are in English! <br> Click here to advance";
+}else {
+    document.getElementById("nextb").innerHTML = "You have completed this level. <br> Now things will get more complex. <br> Click here to advance";
+}
+    //hide testing, resume training
+    level++;
+    trialsDone = 0; 
+    score = 0; 
+    stage = "training"; 
+document.getElementById("nextb").style.display = "block";
+}
+}
+} else {
+if (itemsEntered < listAllIndividual.length) {//if write stage remains to be done; < listAllIndividual.length
+if (stage != "write") {
+stage = "write"; 
+document.getElementById("nextb").innerHTML = "Next";
+displayWriteIntro(); 
+} else {
+displayWrite(); 
+}
+} else { 
+    stage = "finished"; 
+    $.ajax({
+      type: 'POST',
+      url: 'https://www.edavis.ppls.ed.ac.uk/conditionList.php',//url of receiver file on server
+      data:{'condition':condition},
+      cache:false
+});
+  //Done
+document.getElementById("test").style.display = "none";
+document.getElementById("nextb").style.display = "none";
+document.getElementById("entry").style.display = "none";
+document.getElementById("resp").style.display = "none";
+document.getElementById("lvl").style.display = "none";
+document.getElementById("done").innerHTML = "Done! Thank you for playing!</br>";
+var demoDiv = document.createElement('div');
+  demoDiv.id = "demoDiv";
+  document.body.appendChild(demoDiv);
+  $('#demoDiv')
+  .attr('style',"margin-left:45px")
+  .css('font-size',"20px")
+.append('<form id="demoForm" action = "https://www.mturk.com/mturk/externalSubmit" method="POST">\
+        <p>Please provide us with some information about you and how you did the experiment. We will keep this information private, and it will help us very much when we analyze the data.</p>\
+        <p><b>Did you write stuff down or take notes during the task?</b><br>\
+        Please be honest - it won\'t affect your payment, we promise, and if you tell us now we can correct for this in our analysis without affecting the validity of our experiment.<br>\
+        <input type="radio" name="writing" id="writingN" value="no" onclick = "checkFilledDemo()"/>No I did not make notes<br>\
+        <input type="radio" name="writing" id="writingY" value="yes"onclick = "checkFilledDemo()"/>OK I confess, I did make notes!\
+        <p><b>Language background</b><br>\
+        <input id="langNative" name="langNative" size="20" /> Native language(s)<br>\
+        <input id="langOther" name="langOther" size="20"/> Other language experience (indicate if fluent)\
+        <p> Please tell us how you would translate the words "'+prepHoriz+'" and "'+prepVert+'" in English (if you are not sure, say so).<br>\
+        <textarea id="preps" name="preps" rows="10" cols="60" onkeyup = "checkFilledDemo()"></textarea></p>\
+<p>(Optional) Include any other comments you for us, any feedback on the HIT, or anything else you want us to know. If you took notes, you could tell us briefly here what sort of stuff you wrote down.<br>\
+        <textarea id="comments" name="comments" rows="10" cols="60"></textarea></p>\
+         <input type="submit" id = "hit" value="Submit HIT" style="height: 35px; width: 130px; font-size: 18px; visibility: hidden">\
+        </form>');
+	$('#demoForm')
+	.append('<input type="hidden" name="assignmentId" value="'+ assignId +'" />')
+	.append('<input type="hidden" name="hitId" value="'+ hitId +'" />')
+	.append('<input type="hidden" name="workerId" value="'+ workerId +'" />')
+	$('#demoForm').submit(function(e) {
+    e.preventDefault();
+    returnDemoData($(this))
+	});
+}
+}
+}
+
+
+
+function returnDemoData(theform) {
+  $.ajax({
+      type: 'POST',
+      url: 'https://www.edavis.ppls.ed.ac.uk/emilySaveDemographics.php',
+      cache:false,
+      data:theform.serialize(),
+      success: function(phpReturnInfo) {
+        console.log(phpReturnInfo)
+				setTimeout(function() {
+					theform.unbind('submit').submit();},1000);
+      }})
+    }
+
+function atLeastOneRadio() {
+    return document.getElementById("writingN").checked || document.getElementById("writingY").checked
+}
+
+function checkFilledDemo() {
+text1 = document.getElementById("preps").value
+text2 = document.getElementById("langNative").value //get rid of commas and newlines, they mess up the csv
+if (text1.length >0 && text2.length >0 && atLeastOneRadio()==true) {
+document.getElementById("hit").style.visibility = "visible";
+} else {
+document.getElementById("hit").style.visibility = "hidden";
+}
+}
+
+
+
+</script></body>
+</html>
