@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	<title></title>
+	<style type="text/css">.buttonplain {
+  text-align: center;
+  border: 2px outset gray;
+  background: white;
+  padding: 3px;
+  margin: 0 auto;
+  cursor: pointer;
+  }
+	</style>
+</head>
+<body>
+<div id="welcome">
+<h1>Welcome!</h1>
+
+<p>We are investigating people&rsquo;s ability to learn a new language. We&rsquo;ll teach you a small part of a new language, then test you to see how much you have learned. It will take about 60 minutes to complete, and you will be paid $5 for your time.</p>
+
+<p>This experiment is part of a series of studies being conducted by Prof. Kenny Smith at The University of Edinburgh and Emily Davis at UC San Diego, and has been approved by the PPLS Ethics Committee. Please <a href="https://www.edavis.ppls.ed.ac.uk/WebExperiment_consent_GDPR_Emily.pdf">click here</a> to download a study information letter (pdf) that provides further information about the study.</p>
+
+<p>Our software will block you from participating in this HIT more than once.</p>
+
+<p>Clicking on the <b> Accept </b> button below indicates that:</p>
+
+<ul>
+	<li>you have downloaded and read the information letter</li>
+	<li>you voluntarily agree to participate</li>
+	<li>you are a native speaker of English</li>
+</ul>
+
+<p>If you do not agree to all of these, please close this window in your browser now.</p>
+
+<p><span class="buttonplain" id="accept" onclick="">Accept</span></p>
+</div>
+
+<div id="blocked">Sorry, but our records show that you have already completed this HIT (or one closely related to it). Please help us out and click &#39;Return HIT&#39; and don&#39;t complete this one. We apologize for the inconvenience!</div>
+<script>var url = "";
+var assignId = "TEST";
+var hitId = "TEST";
+var workerId = "NOTAREALWORKERID";
+
+	var url = ''+window.location;
+    var info = url.split("?")[1]; 
+	var params =url.split("?")[1].split("&");
+$(document).ready(function() {
+	for (var i=0; i<params.length; i++)
+	{
+		var name = params[i].split("=")[0];
+		var value = params[i].split("=")[1];
+		//insert_hidden_into_form('mturkSubmitForm',name,value);
+		if (name=="assignmentId") {
+			assignId = value;
+		}
+		if (name=="hitId") {
+			hitId = value;
+		}
+		if (name=="workerId") {
+			workerId = value;
+		}
+		if (name=="debug") {	// values can be: nowait, which allows you to continue past instructions without minimum wait
+			debug = value;
+		}
+		if (name=="jump") {	// values can be: ...
+			jump = parseInt(value);
+		}
+	}
+	//check for repeat participants - this will either call duplicateParticipantDetected() or doInformation()
+	checkDuplicate(workerId)
+})
+
+function doInformation() {
+document.getElementById("welcome").style.display = "block"; 
+document.getElementById("blocked").style.display = "none"; 
+urlNew = "https://www.edavis.ppls.ed.ac.uk/preTask.html?"+info; 
+document.getElementById("accept").setAttribute("onclick", "location.href=urlNew");
+}
+
+function duplicateParticipantDetected() {
+document.getElementById("welcome").style.display = "none"; 
+document.getElementById("blocked").style.display = "block"; 
+}
+
+function checkDuplicate(workerId) {
+	var duplicate;
+	//console.log('in check duplicates')
+	if (workerId == 'NOTAREALWORKERID' | assignId =='ASSIGNMENT_ID_NOT_AVAILABLE') {
+		doInformation() // normal operation
+	}
+	else {
+		$.ajax({
+  		type: 'POST',
+  		url: 'https://www.edavis.ppls.ed.ac.uk/EmilyCheckDuplicates.php',
+  		data:{workerId:workerId},
+  		cache:false,
+  		success: function(data) {
+  			//console.log(data)
+  			if (data=='Duplicate') {
+  				duplicateParticipantDetected()
+  			}
+  			else {
+  				doInformation() // normal operation
+  			}
+        }})
+	}
+
+}
+
+
+
+</script></body>
+</html>
